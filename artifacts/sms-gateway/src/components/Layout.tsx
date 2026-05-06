@@ -19,19 +19,33 @@ import {
   Settings,
   CheckCircle,
   AlertCircle,
+  Languages,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileModal from "@/components/ProfileModal";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Workspace", href: "/workspaces", icon: Layers },
-  { label: "SMS Send", href: "/tasks", icon: Send },
-  { label: "SMS Records", href: "/records", icon: MessageSquare },
-  { label: "Channels", href: "/channels", icon: Link2 },
-  { label: "Statistics", href: "/stats", icon: BarChart3 },
-  { label: "Finance", href: "/billing", icon: DollarSign },
-];
+type Lang = "en" | "zh";
+
+function getStoredLang(): Lang {
+  try {
+    const v = localStorage.getItem("orbit_lang");
+    if (v === "zh" || v === "en") return v;
+  } catch {}
+  return "en";
+}
+
+const T: Record<string, Record<Lang, string>> = {
+  dashboard:    { en: "Dashboard",   zh: "仪表板" },
+  workspace:    { en: "Workspace",   zh: "工作区" },
+  smsSend:      { en: "SMS Send",    zh: "短信发送" },
+  smsRecords:   { en: "SMS Records", zh: "发送记录" },
+  channels:     { en: "Channels",    zh: "通道" },
+  statistics:   { en: "Statistics",  zh: "统计" },
+  finance:      { en: "Finance",     zh: "财务" },
+  adminPanel:   { en: "Admin Panel", zh: "管理后台" },
+  accountSettings: { en: "Account Settings", zh: "账户设置" },
+  signOut:      { en: "Sign out",    zh: "退出登录" },
+};
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -39,6 +53,27 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [lang, setLangState] = useState<Lang>(getStoredLang);
+
+  function toggleLang() {
+    const next: Lang = lang === "en" ? "zh" : "en";
+    setLangState(next);
+    try { localStorage.setItem("orbit_lang", next); } catch {}
+  }
+
+  function t(key: string) {
+    return T[key]?.[lang] ?? key;
+  }
+
+  const NAV_ITEMS = [
+    { key: "dashboard",  href: "/",          icon: LayoutDashboard },
+    { key: "workspace",  href: "/workspaces", icon: Layers },
+    { key: "smsSend",    href: "/tasks",      icon: Send },
+    { key: "smsRecords", href: "/records",    icon: MessageSquare },
+    { key: "channels",   href: "/channels",   icon: Link2 },
+    { key: "statistics", href: "/stats",      icon: BarChart3 },
+    { key: "finance",    href: "/billing",    icon: DollarSign },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col dark">
@@ -65,7 +100,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   )}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {item.label}
+                  {t(item.key)}
                 </span>
               </Link>
             );
@@ -73,6 +108,16 @@ export default function Layout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="flex items-center gap-3 ml-auto">
+          {/* Language toggle */}
+          <button
+            onClick={toggleLang}
+            className="hidden md:flex items-center gap-1 px-2 py-1 rounded border border-border/50 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+            title="Switch language"
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span>{lang === "en" ? "EN" : "中文"}</span>
+          </button>
+
           {/* Verification badges */}
           <div className="hidden lg:flex items-center gap-1.5">
             {user?.emailVerified ? (
@@ -134,13 +179,13 @@ export default function Layout({ children }: { children: ReactNode }) {
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted/40 transition-colors border-b border-border"
                 >
                   <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-                  Account Settings
+                  {t("accountSettings")}
                 </button>
                 {user?.role === "admin" && (
                   <Link href="/admin">
                     <span className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer border-b border-border">
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      Admin Panel
+                      {t("adminPanel")}
                     </span>
                   </Link>
                 )}
@@ -149,7 +194,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  Sign out
+                  {t("signOut")}
                 </button>
               </div>
             )}
@@ -165,6 +210,15 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Mobile nav */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 top-12 bg-sidebar z-40 p-4">
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={toggleLang}
+              className="flex items-center gap-1 px-2 py-1 rounded border border-border/50 text-xs text-muted-foreground"
+            >
+              <Languages className="w-3.5 h-3.5" />
+              <span>{lang === "en" ? "EN" : "中文"}</span>
+            </button>
+          </div>
           <nav className="flex flex-col gap-1">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
@@ -179,7 +233,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                     onClick={() => setMobileOpen(false)}
                   >
                     <Icon className="w-4 h-4" />
-                    {item.label}
+                    {t(item.key)}
                   </span>
                 </Link>
               );
@@ -188,7 +242,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               <Link href="/admin">
                 <span onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded text-sm font-medium cursor-pointer transition-colors text-red-400 hover:bg-red-500/10">
                   <ShieldCheck className="w-4 h-4" />
-                  Admin Panel
+                  {t("adminPanel")}
                 </span>
               </Link>
             )}

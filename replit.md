@@ -88,6 +88,14 @@ Demo credentials:
 - "Product" renamed to "Workspace" everywhere in UI
 - Channel type defaults to "transmitter"
 - Demo account section removed from login page (production-ready)
+- Language switcher (EN / 中文) in top nav — persists to localStorage, translates nav items + user menu
+- Workspace creation auto-generates SPID (no user input required)
+- Sender ID is optional in Create Task (blank = use default)
+- Excel/CSV upload in Create Task reads first column for phone numbers (xlsx library)
+- Currency fixed to ₱ throughout Statistics page
+- Admin Clients: connection status badge (Connected / Pending Setup) based on whether smppHost/httpApiKey is set
+- Admin Clients: "Set Channel" (plug icon) action per client — modal with API Key (smppSystemId), API Secret (smppPassword), SMPP Host/Port, HTTP API Key
+- Admin Settings: Provider/API Settings section removed
 
 ## Gotchas
 

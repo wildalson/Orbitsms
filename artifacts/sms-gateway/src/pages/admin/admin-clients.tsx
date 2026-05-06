@@ -1,36 +1,55 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, Trash2, DollarSign, Eye, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Search, Trash2, DollarSign, Eye, X, ChevronDown, ChevronUp, Plug, Wifi, WifiOff } from "lucide-react";
 
 const DEFAULT_PERMS = { sendSms: true, sendBulkSms: true, uploadContacts: false, viewDeliveryReports: true, accessApiCredentials: false, useSenderId: true, exportReports: true };
 
 interface ClientForm {
   username: string; email: string; password: string; phone: string;
   companyName: string; smsRate: number; balance: number; permissions: typeof DEFAULT_PERMS;
+}
+
+interface ConnForm {
   smppHost: string; smppPort: string; smppSystemId: string; smppPassword: string; httpApiKey: string;
 }
 
 const EMPTY_FORM: ClientForm = {
   username: "", email: "", password: "", phone: "", companyName: "",
   smsRate: 0.25, balance: 0, permissions: { ...DEFAULT_PERMS },
+};
+
+const EMPTY_CONN: ConnForm = {
   smppHost: "", smppPort: "2775", smppSystemId: "", smppPassword: "", httpApiKey: "",
 };
+
+function isConnected(c: any): boolean {
+  return !!(c.smppHost || c.httpApiKey);
+}
 
 export default function AdminClients() {
   const { token } = useAuth();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  // Create client modal
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ClientForm>(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showConn, setShowConn] = useState(false);
+
+  // Balance modal
   const [balanceModal, setBalanceModal] = useState<{ id: number; username: string; balance: number } | null>(null);
   const [balanceAmount, setBalanceAmount] = useState("");
   const [balanceNote, setBalanceNote] = useState("");
   const [balanceSaving, setBalanceSaving] = useState(false);
+
+  // Set Channel modal
+  const [connModal, setConnModal] = useState<{ id: number; username: string } | null>(null);
+  const [connForm, setConnForm] = useState<ConnForm>(EMPTY_CONN);
+  const [connSaving, setConnSaving] = useState(false);
+  const [connError, setConnError] = useState("");
 
   async function loadClients() {
     setLoading(true);
@@ -80,6 +99,39 @@ export default function AdminClients() {
     loadClients();
   }
 
+  async function handleConnSave() {
+    if (!connModal) return;
+    setConnSaving(true); setConnError("");
+    const r = await fetch(`/api/admin/clients/${connModal.id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        smppHost: connForm.smppHost,
+        smppPort: connForm.smppPort,
+        smppSystemId: connForm.smppSystemId,
+        smppPassword: connForm.smppPassword,
+        httpApiKey: connForm.httpApiKey,
+      }),
+    });
+    const data = await r.json();
+    setConnSaving(false);
+    if (!r.ok) { setConnError(data.error ?? "Failed to save connection"); return; }
+    setConnModal(null);
+    loadClients();
+  }
+
+  function openConnModal(c: any) {
+    setConnForm({
+      smppHost: c.smppHost ?? "",
+      smppPort: c.smppPort ?? "2775",
+      smppSystemId: c.smppSystemId ?? "",
+      smppPassword: c.smppPassword ?? "",
+      httpApiKey: c.httpApiKey ?? "",
+    });
+    setConnError("");
+    setConnModal({ id: c.id, username: c.username });
+  }
+
   const filtered = clients.filter(c =>
     c.username.toLowerCase().includes(search.toLowerCase()) ||
     (c.companyName ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -99,7 +151,7 @@ export default function AdminClients() {
           <h1 className="text-lg font-bold text-foreground">Client Management</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{clients.length} registered client accounts</p>
         </div>
-        <button onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setFormError(""); setShowConn(false); }}
+        <button onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setFormError(""); }}
           className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded hover:bg-primary/90 transition-colors">
           <Plus className="w-3.5 h-3.5" />
           New Client
@@ -121,7 +173,8 @@ export default function AdminClients() {
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Username</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Company</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Email</th>
-                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Status</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Account</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Connection</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Balance (₱)</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Rate/SMS (₱)</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Joined</th>
@@ -132,14 +185,14 @@ export default function AdminClients() {
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-3 bg-muted rounded animate-pulse" /></td>
                     ))}
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                     {search ? "No clients match your search" : "No clients yet. Create one to get started."}
                   </td>
                 </tr>
@@ -150,9 +203,22 @@ export default function AdminClients() {
                     <td className="px-4 py-2.5 text-muted-foreground">{c.companyName ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{c.email}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded border ${c.status === "active" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
+                      <span className={`px-1.5 py-0.5 rounded border text-xs ${c.status === "active" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
                         {c.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {isConnected(c) ? (
+                        <span className="flex items-center gap-1 text-green-400 text-xs">
+                          <Wifi className="w-3 h-3" />
+                          Connected
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-amber-400 text-xs">
+                          <WifiOff className="w-3 h-3" />
+                          Pending Setup
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-primary">₱{c.balance.toFixed(2)}</td>
                     <td className="px-4 py-2.5 text-right font-mono">₱{c.smsRate.toFixed(4)}</td>
@@ -164,6 +230,10 @@ export default function AdminClients() {
                             <Eye className="w-3.5 h-3.5" />
                           </span>
                         </Link>
+                        <button onClick={() => openConnModal(c)}
+                          className="p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Set Channel / Connection">
+                          <Plug className="w-3.5 h-3.5" />
+                        </button>
                         <button onClick={() => { setBalanceModal({ id: c.id, username: c.username, balance: c.balance }); setBalanceAmount(""); setBalanceNote(""); }}
                           className="p-1.5 rounded hover:bg-amber-500/10 text-muted-foreground hover:text-amber-400 transition-colors" title="Adjust balance">
                           <DollarSign className="w-3.5 h-3.5" />
@@ -193,7 +263,6 @@ export default function AdminClients() {
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               {formError && <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{formError}</div>}
 
-              {/* Account info */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Account Information</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -226,37 +295,6 @@ export default function AdminClients() {
                 </div>
               </div>
 
-              {/* SMPP Connection config */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowConn(v => !v)}
-                  className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
-                >
-                  {showConn ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  Connection Settings (SMPP / HTTP)
-                </button>
-                {showConn && (
-                  <div className="mt-2 grid grid-cols-2 gap-3">
-                    {[
-                      { label: "SMPP Host / IP", key: "smppHost", type: "text", placeholder: "192.168.1.100" },
-                      { label: "SMPP Port", key: "smppPort", type: "text", placeholder: "2775" },
-                      { label: "SMPP System ID", key: "smppSystemId", type: "text", placeholder: "client_id" },
-                      { label: "SMPP Password", key: "smppPassword", type: "password", placeholder: "••••••••" },
-                      { label: "HTTP API Key", key: "httpApiKey", type: "text", placeholder: "sk_live_..." },
-                    ].map(({ label, key, type, placeholder }) => (
-                      <div key={key} className={key === "httpApiKey" ? "col-span-2" : ""}>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
-                        <input type={type} value={(form as any)[key]} placeholder={placeholder}
-                          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                          className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Permissions */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Permissions</p>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -276,6 +314,74 @@ export default function AdminClients() {
               <button onClick={() => setShowForm(false)} className="flex-1 px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
               <button onClick={handleCreate} disabled={saving} className="flex-1 px-3 py-2 rounded bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
                 {saving ? "Creating..." : "Create Client"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Channel / Connection modal */}
+      {connModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-card-border rounded-lg w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Set Channel Connection</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Client: <span className="text-foreground font-medium">{connModal.username}</span></p>
+              </div>
+              <button onClick={() => setConnModal(null)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {connError && <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{connError}</div>}
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">SMPP Credentials</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">API Key</label>
+                    <input type="text" value={connForm.smppSystemId} placeholder="e.g. client_orbit_01"
+                      onChange={e => setConnForm(f => ({ ...f, smppSystemId: e.target.value }))}
+                      className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                    <p className="text-xs text-muted-foreground/50 mt-0.5">SMPP System ID used as API Key</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">API Secret</label>
+                    <input type="password" value={connForm.smppPassword} placeholder="••••••••"
+                      onChange={e => setConnForm(f => ({ ...f, smppPassword: e.target.value }))}
+                      className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                    <p className="text-xs text-muted-foreground/50 mt-0.5">SMPP Password used as API Secret</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">SMPP Host / IP</label>
+                    <input type="text" value={connForm.smppHost} placeholder="192.168.1.100"
+                      onChange={e => setConnForm(f => ({ ...f, smppHost: e.target.value }))}
+                      className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">SMPP Port</label>
+                    <input type="text" value={connForm.smppPort} placeholder="2775"
+                      onChange={e => setConnForm(f => ({ ...f, smppPort: e.target.value }))}
+                      className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">HTTP Connection</p>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">HTTP API Key</label>
+                  <input type="text" value={connForm.httpApiKey} placeholder="sk_live_..."
+                    onChange={e => setConnForm(f => ({ ...f, httpApiKey: e.target.value }))}
+                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 px-5 py-4 border-t border-border">
+              <button onClick={() => setConnModal(null)} className="flex-1 px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+              <button onClick={handleConnSave} disabled={connSaving}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                <Plug className="w-3 h-3" />
+                {connSaving ? "Saving..." : "Save Connection"}
               </button>
             </div>
           </div>

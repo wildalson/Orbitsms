@@ -59,7 +59,7 @@ export default function StatsPage() {
             { label: "Delivered", value: stats.totalDelivered.toLocaleString(), color: "text-green-400" },
             { label: "Failed", value: stats.totalFailed.toLocaleString(), color: "text-destructive" },
             { label: "Delivery Rate", value: `${stats.deliveryRate}%`, color: "text-primary" },
-            { label: "Total Cost", value: `$${stats.totalCost.toFixed(4)}`, color: "text-amber-400" },
+            { label: "Total Cost", value: `₱${stats.totalCost.toFixed(4)}`, color: "text-amber-400" },
             { label: "Avg Latency", value: `${stats.avgLatencyMs}ms`, color: "text-blue-400" },
           ].map((s) => (
             <div key={s.label} className="bg-card border border-card-border rounded-lg p-3">

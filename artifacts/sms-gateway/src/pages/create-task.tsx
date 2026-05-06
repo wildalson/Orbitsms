@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useCreateTask, useListProducts, getListTasksQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Smartphone, Upload, FileText, AlertCircle } from "lucide-react";
+import { Send, Smartphone, Upload, FileText, AlertCircle, X } from "lucide-react";
 import { detectOperator } from "@/lib/ph-operators";
+import * as XLSX from "xlsx";
 
 const MAX_SMS_CHARS = 160;
 
@@ -12,12 +13,13 @@ export default function CreateTaskPage() {
   const qc = useQueryClient();
   const { data: products } = useListProducts();
   const createMut = useCreateTask();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [taskName, setTaskName] = useState(() => new Date().toLocaleString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(/[,]/g, ""));
   const [productId, setProductId] = useState<number>(0);
-  const [senderId, setSenderId] = useState("OrbitSMS");
-  const [recipientMode, setRecipientMode] = useState<"manual" | "upload">("manual");
+  const [senderId, setSenderId] = useState("");
   const [recipientText, setRecipientText] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [error, setError] = useState("");
 
@@ -50,6 +52,44 @@ export default function CreateTaskPage() {
     Unknown: "text-muted-foreground bg-muted/30 border-border",
   };
 
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const numbers: string[] = [];
+        for (const row of rows) {
+          const cell = row[0];
+          if (cell !== undefined && cell !== null && String(cell).trim() !== "") {
+            numbers.push(String(cell).trim());
+          }
+        }
+        if (numbers.length > 0) {
+          setRecipientText(prev => {
+            const existing = prev.trim();
+            return existing ? `${existing}\n${numbers.join("\n")}` : numbers.join("\n");
+          });
+        }
+      } catch {
+        setError("Could not parse file. Please use a valid Excel (.xlsx/.xls) or CSV file.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  }
+
+  function clearUpload() {
+    setUploadedFileName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!productId) { setError("Select a workspace"); return; }
@@ -62,7 +102,7 @@ export default function CreateTaskPage() {
           name: taskName,
           productId,
           messageContent,
-          senderId,
+          senderId: senderId.trim() || undefined,
           recipients,
         },
       });
@@ -120,18 +160,19 @@ export default function CreateTaskPage() {
                   >
                     <option value={0}>Select workspace</option>
                     {products?.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} (spid: {p.spid})</option>
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Sender ID</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Sender ID <span className="text-muted-foreground/50">(optional)</span></label>
                   <input
                     type="text"
                     value={senderId}
                     onChange={(e) => setSenderId(e.target.value)}
+                    placeholder="Leave blank to use default"
                     maxLength={11}
-                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50"
                   />
                   <p className="text-xs text-muted-foreground/60 mt-1">Max 11 characters. Displayed as sender name on recipient's phone.</p>
                 </div>
@@ -139,31 +180,12 @@ export default function CreateTaskPage() {
             </div>
 
             <div className="bg-card border border-card-border rounded-lg p-5">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
                 <Send className="w-4 h-4 text-muted-foreground" />
                 <h2 className="text-sm font-semibold text-foreground">SMS Recipients</h2>
                 <span className="ml-auto text-xs text-muted-foreground">Philippines only</span>
               </div>
-              <div className="flex gap-2 mb-3">
-                {[
-                  { mode: "manual", label: "Manual Input", icon: FileText },
-                  { mode: "upload", label: "Upload Numbers", icon: Upload },
-                ].map(({ mode, label, icon: Icon }) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setRecipientMode(mode as any)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-                      recipientMode === mode
-                        ? "bg-primary/10 text-primary border-primary/30"
-                        : "bg-background text-muted-foreground border-border hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {label}
-                  </button>
-                ))}
-              </div>
+
               <textarea
                 value={recipientText}
                 onChange={(e) => setRecipientText(e.target.value)}
@@ -171,6 +193,36 @@ export default function CreateTaskPage() {
                 rows={6}
                 className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 font-mono resize-y"
               />
+
+              {/* File upload row */}
+              <div className="mt-3 flex items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="recipient-file-upload"
+                />
+                <label
+                  htmlFor="recipient-file-upload"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40 cursor-pointer transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload Excel / CSV
+                </label>
+                {uploadedFileName && (
+                  <div className="flex items-center gap-1.5 text-xs text-primary">
+                    <FileText className="w-3 h-3" />
+                    <span className="truncate max-w-[180px]">{uploadedFileName}</span>
+                    <button type="button" onClick={clearUpload} className="text-muted-foreground hover:text-foreground">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground/50 ml-auto">Reads first column</p>
+              </div>
+
               <div className="mt-2 flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}
@@ -266,7 +318,7 @@ export default function CreateTaskPage() {
               )}
             </div>
 
-            {/* Phone preview — standard mobile size */}
+            {/* Phone preview */}
             <div className="flex flex-col items-center">
               <div className="w-72 bg-[#1a1a2e] rounded-3xl border-4 border-[#252545] shadow-xl overflow-hidden">
                 {/* Status bar */}

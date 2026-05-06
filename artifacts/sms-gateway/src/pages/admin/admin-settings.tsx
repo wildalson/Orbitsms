@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Globe, MessageSquare, Bell, Shield } from "lucide-react";
+import { Settings, Globe, MessageSquare } from "lucide-react";
 
 export default function AdminSettings() {
   const [defaultRate, setDefaultRate] = useState("0.25");
@@ -76,32 +76,6 @@ export default function AdminSettings() {
             </label>
           ))}
         </div>
-      </div>
-
-      <div className="bg-card border border-card-border rounded-lg p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Shield className="w-4 h-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-foreground">Provider / API Settings</h2>
-        </div>
-        <p className="text-xs text-muted-foreground">Connect to an SMS provider API (Laaffic, SMPP, etc.)</p>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: "API URL", placeholder: "https://api.laaffic.com/sms/send" },
-            { label: "API Key", placeholder: "your-api-key" },
-            { label: "API Secret", placeholder: "your-api-secret" },
-            { label: "Default Sender ID", placeholder: "InfoSMS" },
-          ].map(({ label, placeholder }) => (
-            <div key={label}>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
-              <input type={label.includes("Secret") || label.includes("Key") ? "password" : "text"}
-                placeholder={placeholder}
-                className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground italic">
-          Provider integration is prepared for connection. Configure channels in the client portal to activate SMPP/HTTP bindings.
-        </p>
       </div>
 
       <div className="flex justify-end">

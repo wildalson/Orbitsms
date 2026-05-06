@@ -13,20 +13,19 @@ export default function WorkspacesPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
-  const [spid, setSpid] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError("Workspace name is required"); return; }
-    if (!spid.trim()) { setError("SPID is required"); return; }
     setSaving(true); setError("");
     try {
-      await createMut.mutateAsync({ data: { name: name.trim(), spid: spid.trim() } });
+      const autoSpid = `WS${Date.now()}`;
+      await createMut.mutateAsync({ data: { name: name.trim(), spid: autoSpid, type: "WS" } });
       qc.invalidateQueries({ queryKey: getListProductsQueryKey() });
       setShowForm(false);
-      setName(""); setSpid("");
+      setName("");
     } catch (err: any) {
       setError(err?.data?.error || err?.message || "Failed to create workspace");
     }
@@ -44,10 +43,10 @@ export default function WorkspacesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-foreground">Workspaces</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Create and manage your SMS workspaces</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Manage your SMS sending workspaces</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setName(""); setSpid(""); setError(""); }}
+          onClick={() => { setShowForm(true); setName(""); setError(""); }}
           className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -56,98 +55,91 @@ export default function WorkspacesPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-card border border-card-border rounded-lg p-5 animate-pulse">
-              <div className="h-4 bg-muted rounded w-2/3 mb-3" />
+            <div key={i} className="bg-card border border-card-border rounded-lg p-4 animate-pulse">
+              <div className="h-4 bg-muted rounded w-2/3 mb-2" />
               <div className="h-3 bg-muted rounded w-1/3" />
             </div>
           ))}
         </div>
-      ) : products?.length === 0 ? (
-        <div className="py-20 text-center">
-          <Layers className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-muted-foreground text-sm">No workspaces yet.</p>
-          <button onClick={() => setShowForm(true)} className="text-primary text-sm mt-1 hover:underline">
-            Create your first workspace
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products?.map((p, i) => (
-            <div key={p.id} className="bg-card border border-card-border rounded-lg p-5 hover:border-primary/20 transition-colors group">
-              <div className="flex items-start justify-between mb-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold"
-                  style={{ background: `${COLORS[i % COLORS.length]}20`, color: COLORS[i % COLORS.length] }}
-                >
-                  {p.name[0]?.toUpperCase()}
+      ) : products && products.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((p, i) => (
+            <div key={p.id} className="bg-card border border-card-border rounded-lg p-4 flex flex-col gap-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${COLORS[i % COLORS.length]}20`, border: `1px solid ${COLORS[i % COLORS.length]}40` }}>
+                    <Layers className="w-4 h-4" style={{ color: COLORS[i % COLORS.length] }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.type}</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDelete(p.id, p.name)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                  className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Delete workspace"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <h3 className="text-sm font-semibold text-foreground">{p.name}</h3>
-              <p className="text-xs text-muted-foreground font-mono mt-0.5">SPID: {p.spid}</p>
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Balance</span>
-                  <span className="text-xs font-mono font-semibold text-primary">₱{Number(p.balance).toFixed(2)}</span>
+              <div className="pt-2 border-t border-border/50 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <p className="text-muted-foreground">Balance</p>
+                  <p className="font-mono text-primary font-semibold">₱{p.balance.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Created</p>
+                  <p className="text-foreground">{new Date(p.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <div className="bg-card border border-card-border rounded-lg p-12 flex flex-col items-center gap-3 text-center">
+          <Layers className="w-10 h-10 text-muted-foreground/40" />
+          <p className="text-sm font-medium text-muted-foreground">No workspaces yet</p>
+          <p className="text-xs text-muted-foreground/60">Create a workspace to start sending SMS campaigns.</p>
+          <button
+            onClick={() => { setShowForm(true); setName(""); setError(""); }}
+            className="mt-2 flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create First Workspace
+          </button>
+        </div>
       )}
 
+      {/* Create workspace modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-card-border rounded-lg w-full max-w-sm shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="text-sm font-semibold text-foreground">New Workspace</h2>
-              <button onClick={() => setShowForm(false)}>
-                <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-              </button>
+              <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
             </div>
             <form onSubmit={handleCreate}>
-              <div className="p-5 space-y-3">
-                {error && (
-                  <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{error}</div>
-                )}
+              <div className="p-5 space-y-4">
+                {error && <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{error}</div>}
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Workspace Name <span className="text-destructive">*</span></label>
                   <input
                     type="text"
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="e.g. Marketing, OTP, Notifications"
-                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Marketing, OTP, Promotions"
                     autoFocus
+                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">SPID <span className="text-destructive">*</span></label>
-                  <input
-                    type="text"
-                    value={spid}
-                    onChange={e => setSpid(e.target.value)}
-                    placeholder="e.g. SP001"
-                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                  />
-                  <p className="text-xs text-muted-foreground/60 mt-1">Service Provider ID used for routing</p>
                 </div>
               </div>
               <div className="flex gap-2 px-5 py-4 border-t border-border">
-                <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving}
-                  className="flex-1 px-3 py-2 rounded bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50">
-                  {saving ? "Creating..." : "Create"}
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                <button type="submit" disabled={saving} className="flex-1 px-3 py-2 rounded bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {saving ? "Creating..." : "Create Workspace"}
                 </button>
               </div>
             </form>
