@@ -173,4 +173,5 @@ overrides:
   postcss: ">=8.5.10"
   # lodash: code injection + prototype pollution (GHSA-r5fr-rjxr-66jc, GHSA-f23m-r3pf-42rh)
   # Fix released as 4.18.0/4.18.1 — force all transitive dependents to patched version.
-  lodash: ">=4.18.0"
+  # Bounded to <5 to avoid unintended future major upgrades.
+  lodash: ">=4.18.0 <5"
