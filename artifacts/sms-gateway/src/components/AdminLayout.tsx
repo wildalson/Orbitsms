@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       )}>
         <div className="h-12 flex items-center gap-2 px-4 border-b border-sidebar-border shrink-0">
           <ShieldCheck className="w-5 h-5 text-primary" />
-          <span className="text-sm font-bold text-foreground tracking-tight">Admin Panel</span>
+          <span className="text-sm font-bold text-foreground tracking-tight">OrbitSMS Admin</span>
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -99,7 +99,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <span className="text-sm font-bold text-foreground">Admin Panel</span>
+          <span className="text-sm font-bold text-foreground">OrbitSMS Admin</span>
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>

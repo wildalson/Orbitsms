@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useCreateTask, useListProducts, getListTasksQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Send, Smartphone, Upload, FileText, AlertCircle } from "lucide-react";
+import { detectOperator } from "@/lib/ph-operators";
 
 const MAX_SMS_CHARS = 160;
 
@@ -14,7 +15,7 @@ export default function CreateTaskPage() {
 
   const [taskName, setTaskName] = useState(() => new Date().toLocaleString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(/[,]/g, ""));
   const [productId, setProductId] = useState<number>(0);
-  const [senderId, setSenderId] = useState("Sender ID");
+  const [senderId, setSenderId] = useState("OrbitSMS");
   const [recipientMode, setRecipientMode] = useState<"manual" | "upload">("manual");
   const [recipientText, setRecipientText] = useState("");
   const [messageContent, setMessageContent] = useState("");
@@ -34,6 +35,21 @@ export default function CreateTaskPage() {
   const charCount = messageContent.length;
   const smsCount = Math.ceil(charCount / MAX_SMS_CHARS) || 1;
   const selectedProduct = products?.find((p) => p.id === productId);
+
+  // Operator breakdown for PH numbers
+  const operatorBreakdown = recipients.reduce<Record<string, number>>((acc, num) => {
+    const op = detectOperator(num);
+    const label = op ? op.routeVia : "Unknown";
+    acc[label] = (acc[label] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const OPERATOR_COLORS: Record<string, string> = {
+    Globe: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    Smart: "text-green-400 bg-green-500/10 border-green-500/20",
+    DITO: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+    Unknown: "text-muted-foreground bg-muted/30 border-border",
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +78,7 @@ export default function CreateTaskPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-5">
         <h1 className="text-lg font-bold text-foreground">Create Task</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Sending an SMS is really very simple.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Compose and send an SMS campaign to Philippine numbers.</p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -109,14 +125,16 @@ export default function CreateTaskPage() {
                     ))}
                   </select>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Sender ID</label>
                   <input
                     type="text"
                     value={senderId}
                     onChange={(e) => setSenderId(e.target.value)}
+                    maxLength={11}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                   />
+                  <p className="text-xs text-muted-foreground/60 mt-1">Max 11 characters. Used as the displayed sender name on the recipient's phone.</p>
                 </div>
               </div>
             </div>
@@ -125,6 +143,7 @@ export default function CreateTaskPage() {
               <div className="flex items-center gap-2 mb-4">
                 <Send className="w-4 h-4 text-muted-foreground" />
                 <h2 className="text-sm font-semibold text-foreground">SMS Recipients</h2>
+                <span className="ml-auto text-xs text-muted-foreground">Philippines only</span>
               </div>
               <div className="flex gap-2 mb-3">
                 {[
@@ -149,16 +168,33 @@ export default function CreateTaskPage() {
               <textarea
                 value={recipientText}
                 onChange={(e) => setRecipientText(e.target.value)}
-                placeholder={`Multiple numbers, comma separated (include country code):\n63822468100075,6287765432101`}
+                placeholder={"One number per line or comma-separated:\n09171234567\n09281234567,09951234567\n+639171234567"}
                 rows={5}
                 className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 font-mono resize-y"
               />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {recipients.length} recipient{recipients.length !== 1 ? "s" : ""} entered
-              </p>
-              <p className="text-xs text-amber-400/70 mt-1">
-                Numbers must include country code, otherwise messages cannot be delivered.
-              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+
+              {/* PH Operator breakdown */}
+              {recipients.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Operator Detection</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(operatorBreakdown).map(([op, count]) => (
+                      <span key={op} className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs font-medium ${OPERATOR_COLORS[op] ?? OPERATOR_COLORS.Unknown}`}>
+                        <span className="font-semibold">{op}</span>
+                        <span className="opacity-70">×{count}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground/50 mt-1.5">
+                    Globe → MCC/MNC 51502 · Smart → 51503 · DITO → 51566
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-card border border-card-border rounded-lg p-5">
@@ -198,7 +234,7 @@ export default function CreateTaskPage() {
             <div className="bg-card border border-card-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-semibold text-foreground">Configuration Summary</h3>
-                <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">SMS</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">PH Only</span>
               </div>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
@@ -222,6 +258,17 @@ export default function CreateTaskPage() {
                   <span className="text-primary font-mono">₱{(recipients.length * 0.25 * smsCount).toFixed(2)}</span>
                 </div>
               </div>
+              {recipients.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50 space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium mb-1.5">Route Breakdown</p>
+                  {Object.entries(operatorBreakdown).map(([op, count]) => (
+                    <div key={op} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{op}</span>
+                      <span className="font-mono text-foreground">{count} nums</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col items-center">
@@ -236,7 +283,7 @@ export default function CreateTaskPage() {
                     <div className="w-8 h-8 rounded-full bg-[#252545] flex items-center justify-center mb-1">
                       <Smartphone className="w-4 h-4 text-gray-400" />
                     </div>
-                    <p className="text-xs text-gray-400">{senderId || "Sender ID"}</p>
+                    <p className="text-xs text-gray-400">{senderId || "OrbitSMS"}</p>
                     <p className="text-[10px] text-gray-600">
                       {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}
                     </p>

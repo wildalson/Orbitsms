@@ -19,6 +19,7 @@ interface ChannelForm {
   maxBindings: number;
   channelType: "transmitter" | "receiver" | "transceiver";
   productId: number;
+  operator: "Globe" | "Smart" | "DITO" | "";
 }
 
 const EMPTY_FORM: ChannelForm = {
@@ -31,6 +32,19 @@ const EMPTY_FORM: ChannelForm = {
   maxBindings: 5,
   channelType: "transmitter",
   productId: 0,
+  operator: "Globe",
+};
+
+const PH_OPERATORS = [
+  { value: "Globe", label: "Globe (MCC/MNC 51502)", color: "text-blue-400" },
+  { value: "Smart", label: "Smart (MCC/MNC 51503)", color: "text-green-400" },
+  { value: "DITO", label: "DITO (MCC/MNC 51566)", color: "text-purple-400" },
+];
+
+const OPERATOR_BADGE: Record<string, string> = {
+  Globe: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  Smart: "bg-green-500/10 text-green-400 border-green-500/20",
+  DITO: "bg-purple-500/10 text-purple-400 border-purple-500/20",
 };
 
 export default function ChannelsPage() {
@@ -59,6 +73,7 @@ export default function ChannelsPage() {
       name: ch.name, protocol: ch.protocol, host: ch.host, port: ch.port,
       username: ch.username, password: "", maxBindings: ch.maxBindings,
       channelType: ch.channelType, productId: ch.productId,
+      operator: ch.operator ?? "Globe",
     });
     setShowForm(true);
     setError("");
@@ -135,6 +150,11 @@ export default function ChannelsPage() {
                       }`}>
                         {ch.protocol}
                       </span>
+                      {ch.operator && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${OPERATOR_BADGE[ch.operator] ?? ""}`}>
+                          {ch.operator}
+                        </span>
+                      )}
                       <span className={`text-xs px-1.5 py-0.5 rounded border ${STATUS_STYLES[ch.status]}`}>
                         {ch.status}
                       </span>
@@ -229,6 +249,17 @@ export default function ChannelsPage() {
                     <option value="transceiver">Transceiver</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">PH Operator <span className="text-destructive">*</span></label>
+                <select value={form.operator} onChange={(e) => setForm(f => ({ ...f, operator: e.target.value as any }))}
+                  className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50">
+                  {PH_OPERATORS.map(op => (
+                    <option key={op.value} value={op.value}>{op.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground/50 mt-1">Routes to this operator's MCC/MNC for Philippine numbers</p>
               </div>
 
               <div>

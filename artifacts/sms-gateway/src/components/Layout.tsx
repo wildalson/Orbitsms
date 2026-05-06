@@ -42,7 +42,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       <header className="h-12 bg-sidebar border-b border-sidebar-border flex items-center px-4 gap-4 shrink-0 z-50">
         <div className="flex items-center gap-2 text-primary font-bold text-lg tracking-tight">
           <Activity className="w-5 h-5" />
-          <span>SMS</span>
+          <span>OrbitSMS</span>
         </div>
 
         {/* Desktop nav */}

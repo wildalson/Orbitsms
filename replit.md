@@ -1,6 +1,6 @@
-# SMS Gateway
+# OrbitSMS
 
-A full-stack SMS Gateway management platform (Chinese SMS aggregator style) with SMPP/HTTP channel management, SMS task sending, delivery records, billing, a professional dark-themed dashboard UI, and a full Super Admin panel for client management.
+A full-stack SMS Gateway management platform for the Philippines (Chinese SMS aggregator style) with SMPP/HTTP channel management, SMS task sending, delivery records, billing, a professional dark-themed dashboard UI, and a full Super Admin panel for client management.
 
 ## Run & Operate
 
@@ -13,7 +13,7 @@ A full-stack SMS Gateway management platform (Chinese SMS aggregator style) with
 - Required env: `DATABASE_URL` — Postgres connection string
 
 Demo credentials:
-- Client: `langdemo` / `123456`
+- Clients: `demo1`–`demo5` / `123456`
 - Super Admin: `admin` / `admin123`
 
 ## Stack

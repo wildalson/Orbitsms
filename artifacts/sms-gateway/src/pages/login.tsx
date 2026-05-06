@@ -66,12 +66,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex dark">
       {/* Left panel - visual */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden bg-[#030a14]">
-        <img src={loginBg} alt="SMS Gateway" className="absolute inset-0 w-full h-full object-cover opacity-70" />
+        <img src={loginBg} alt="OrbitSMS" className="absolute inset-0 w-full h-full object-cover opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#030a14]/60" />
         <div className="relative z-10 p-10 flex flex-col justify-between w-full">
           <div className="flex items-center gap-2 text-primary">
             <Activity className="w-6 h-6" />
-            <span className="text-xl font-bold tracking-tight">SMS Gateway</span>
+            <span className="text-xl font-bold tracking-tight">OrbitSMS</span>
           </div>
           <div>
             <div className="flex gap-6 text-white/60 text-sm">
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 HTTP Gateway
               </div>
             </div>
-            <p className="text-white/30 text-xs mt-3">Telco-grade SMS infrastructure management</p>
+            <p className="text-white/30 text-xs mt-3">Telco-grade SMS infrastructure for the Philippines</p>
           </div>
         </div>
       </div>
@@ -93,6 +93,10 @@ export default function LoginPage() {
       <div className="w-full lg:w-96 xl:w-[420px] flex flex-col items-center justify-center bg-background p-8">
         <div className="w-full max-w-sm">
           <div className="mb-8">
+            <div className="flex items-center gap-2 text-primary mb-3 lg:hidden">
+              <Activity className="w-5 h-5" />
+              <span className="text-lg font-bold tracking-tight">OrbitSMS</span>
+            </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
               {mode === "login" ? "Back-stage management" : "Create account"}
             </h1>
@@ -114,7 +118,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="langdemo"
+                placeholder="demo1"
                 className="w-full bg-card border border-input rounded px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
                 required
               />
@@ -141,7 +145,7 @@ export default function LoginPage() {
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1 555 000 0000"
+                  placeholder="+63 917 000 0000"
                   className="w-full bg-card border border-input rounded px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
                 />
               </div>
@@ -192,14 +196,29 @@ export default function LoginPage() {
             )}
           </p>
 
-          <div className="mt-6 p-3 rounded border border-border/50 bg-muted/20 space-y-1">
-            <p className="text-xs text-muted-foreground/60 font-medium">Demo accounts</p>
-            <p className="text-xs text-muted-foreground/60">
-              Client: <span className="font-mono text-muted-foreground">langdemo</span> / <span className="font-mono text-muted-foreground">123456</span>
-            </p>
-            <p className="text-xs text-muted-foreground/60">
-              Admin: <span className="font-mono text-muted-foreground">admin</span> / <span className="font-mono text-muted-foreground">admin123</span>
-            </p>
+          <div className="mt-6 p-3 rounded border border-border/50 bg-muted/20 space-y-1.5">
+            <p className="text-xs text-muted-foreground/70 font-semibold mb-1">Demo accounts — password: 123456</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+              {["demo1","demo2","demo3","demo4","demo5"].map(u => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => { setUsername(u); setPassword("123456"); }}
+                  className="text-left text-xs font-mono text-primary/80 hover:text-primary transition-colors"
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-border/40 pt-1.5 mt-1">
+              <button
+                type="button"
+                onClick={() => { setUsername("admin"); setPassword("admin123"); }}
+                className="text-xs font-mono text-red-400/80 hover:text-red-400 transition-colors"
+              >
+                admin (super admin)
+              </button>
+            </div>
           </div>
         </div>
       </div>
