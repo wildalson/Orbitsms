@@ -11,14 +11,12 @@ import {
   Menu,
   X,
   ShieldCheck,
-  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Clients", href: "/admin/clients", icon: Users },
-  { label: "Channels", href: "/admin/channels", icon: Link2 },
   { label: "SMS Logs", href: "/admin/logs", icon: MessageSquare },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];

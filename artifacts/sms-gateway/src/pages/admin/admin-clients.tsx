@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, Trash2, DollarSign, Eye, X, ChevronDown, ChevronUp, Plug, Wifi, WifiOff } from "lucide-react";
+import { Plus, Search, Trash2, DollarSign, Eye, X, Plug, Wifi, WifiOff } from "lucide-react";
 
 const DEFAULT_PERMS = { sendSms: true, sendBulkSms: true, uploadContacts: false, viewDeliveryReports: true, accessApiCredentials: false, useSenderId: true, exportReports: true };
 
@@ -10,8 +10,15 @@ interface ClientForm {
   companyName: string; smsRate: number; balance: number; permissions: typeof DEFAULT_PERMS;
 }
 
+type ConnType = "http" | "smpp";
+
 interface ConnForm {
-  smppHost: string; smppPort: string; smppSystemId: string; smppPassword: string; httpApiKey: string;
+  connType: ConnType;
+  apiKey: string;
+  apiSecret: string;
+  host: string;
+  port: string;
+  appId: string;
 }
 
 const EMPTY_FORM: ClientForm = {
@@ -20,11 +27,17 @@ const EMPTY_FORM: ClientForm = {
 };
 
 const EMPTY_CONN: ConnForm = {
-  smppHost: "", smppPort: "2775", smppSystemId: "", smppPassword: "", httpApiKey: "",
+  connType: "http",
+  apiKey: "", apiSecret: "", host: "", port: "2775", appId: "",
 };
 
 function isConnected(c: any): boolean {
   return !!(c.smppHost || c.httpApiKey);
+}
+
+function inferConnType(c: any): ConnType {
+  if (c.httpApiKey) return "smpp";
+  return "http";
 }
 
 export default function AdminClients() {
@@ -33,19 +46,16 @@ export default function AdminClients() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // Create client modal
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ClientForm>(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Balance modal
   const [balanceModal, setBalanceModal] = useState<{ id: number; username: string; balance: number } | null>(null);
   const [balanceAmount, setBalanceAmount] = useState("");
   const [balanceNote, setBalanceNote] = useState("");
   const [balanceSaving, setBalanceSaving] = useState(false);
 
-  // Set Channel modal
   const [connModal, setConnModal] = useState<{ id: number; username: string } | null>(null);
   const [connForm, setConnForm] = useState<ConnForm>(EMPTY_CONN);
   const [connSaving, setConnSaving] = useState(false);
@@ -72,8 +82,7 @@ export default function AdminClients() {
     const data = await r.json();
     setSaving(false);
     if (!r.ok) { setFormError(data.error ?? "Failed"); return; }
-    setShowForm(false);
-    setForm(EMPTY_FORM);
+    setShowForm(false); setForm(EMPTY_FORM);
     loadClients();
   }
 
@@ -94,24 +103,37 @@ export default function AdminClients() {
       body: JSON.stringify({ amount, description: balanceNote || undefined }),
     });
     setBalanceSaving(false);
-    setBalanceModal(null);
-    setBalanceAmount(""); setBalanceNote("");
+    setBalanceModal(null); setBalanceAmount(""); setBalanceNote("");
     loadClients();
   }
 
   async function handleConnSave() {
     if (!connModal) return;
     setConnSaving(true); setConnError("");
+
+    let payload: Record<string, string> = {};
+    if (connForm.connType === "http") {
+      payload = {
+        smppSystemId: connForm.apiKey,
+        smppPassword: connForm.apiSecret,
+        smppHost: connForm.host,
+        smppPort: connForm.port,
+        httpApiKey: "",
+      };
+    } else {
+      payload = {
+        httpApiKey: connForm.appId,
+        smppSystemId: connForm.apiKey,
+        smppPassword: connForm.apiSecret,
+        smppHost: connForm.host,
+        smppPort: connForm.port,
+      };
+    }
+
     const r = await fetch(`/api/admin/clients/${connModal.id}`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        smppHost: connForm.smppHost,
-        smppPort: connForm.smppPort,
-        smppSystemId: connForm.smppSystemId,
-        smppPassword: connForm.smppPassword,
-        httpApiKey: connForm.httpApiKey,
-      }),
+      body: JSON.stringify(payload),
     });
     const data = await r.json();
     setConnSaving(false);
@@ -121,12 +143,14 @@ export default function AdminClients() {
   }
 
   function openConnModal(c: any) {
+    const ctype = inferConnType(c);
     setConnForm({
-      smppHost: c.smppHost ?? "",
-      smppPort: c.smppPort ?? "2775",
-      smppSystemId: c.smppSystemId ?? "",
-      smppPassword: c.smppPassword ?? "",
-      httpApiKey: c.httpApiKey ?? "",
+      connType: ctype,
+      apiKey: c.smppSystemId ?? "",
+      apiSecret: c.smppPassword ?? "",
+      host: c.smppHost ?? "",
+      port: c.smppPort ?? "2775",
+      appId: c.httpApiKey ?? "",
     });
     setConnError("");
     setConnModal({ id: c.id, username: c.username });
@@ -210,13 +234,11 @@ export default function AdminClients() {
                     <td className="px-4 py-2.5">
                       {isConnected(c) ? (
                         <span className="flex items-center gap-1 text-green-400 text-xs">
-                          <Wifi className="w-3 h-3" />
-                          Connected
+                          <Wifi className="w-3 h-3" /> Connected
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-amber-400 text-xs">
-                          <WifiOff className="w-3 h-3" />
-                          Pending Setup
+                          <WifiOff className="w-3 h-3" /> Pending Setup
                         </span>
                       )}
                     </td>
@@ -231,7 +253,7 @@ export default function AdminClients() {
                           </span>
                         </Link>
                         <button onClick={() => openConnModal(c)}
-                          className="p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Set Channel / Connection">
+                          className="p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Set Channel">
                           <Plug className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => { setBalanceModal({ id: c.id, username: c.username, balance: c.balance }); setBalanceAmount(""); setBalanceNote(""); }}
@@ -262,7 +284,6 @@ export default function AdminClients() {
             </div>
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               {formError && <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{formError}</div>}
-
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Account Information</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -294,7 +315,6 @@ export default function AdminClients() {
                   </div>
                 </div>
               </div>
-
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Permissions</p>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -320,7 +340,7 @@ export default function AdminClients() {
         </div>
       )}
 
-      {/* Set Channel / Connection modal */}
+      {/* Set Channel modal — HTTP / SMPP tabs */}
       {connModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-card-border rounded-lg w-full max-w-md shadow-xl">
@@ -331,51 +351,94 @@ export default function AdminClients() {
               </div>
               <button onClick={() => setConnModal(null)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
             </div>
-            <div className="p-5 space-y-4">
+
+            {/* Connection type tab selector */}
+            <div className="flex border-b border-border px-5 pt-4 gap-1">
+              {(["http", "smpp"] as ConnType[]).map((ct) => (
+                <button
+                  key={ct}
+                  onClick={() => setConnForm(f => ({ ...f, connType: ct }))}
+                  className={`px-4 py-2 text-xs font-semibold rounded-t border-b-2 transition-colors ${
+                    connForm.connType === ct
+                      ? "border-primary text-primary bg-primary/5"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {ct.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-5 space-y-3">
               {connError && <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{connError}</div>}
 
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">SMPP Credentials</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
+              {connForm.connType === "http" ? (
+                <>
+                  <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">API Key</label>
-                    <input type="text" value={connForm.smppSystemId} placeholder="e.g. client_orbit_01"
-                      onChange={e => setConnForm(f => ({ ...f, smppSystemId: e.target.value }))}
+                    <input type="text" value={connForm.apiKey} placeholder="e.g. client_api_key_01"
+                      onChange={e => setConnForm(f => ({ ...f, apiKey: e.target.value }))}
                       className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
-                    <p className="text-xs text-muted-foreground/50 mt-0.5">SMPP System ID used as API Key</p>
                   </div>
-                  <div className="col-span-2">
+                  <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">API Secret</label>
-                    <input type="password" value={connForm.smppPassword} placeholder="••••••••"
-                      onChange={e => setConnForm(f => ({ ...f, smppPassword: e.target.value }))}
+                    <input type="password" value={connForm.apiSecret} placeholder="••••••••"
+                      onChange={e => setConnForm(f => ({ ...f, apiSecret: e.target.value }))}
                       className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
-                    <p className="text-xs text-muted-foreground/50 mt-0.5">SMPP Password used as API Secret</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Host</label>
+                      <input type="text" value={connForm.host} placeholder="api.example.com"
+                        onChange={e => setConnForm(f => ({ ...f, host: e.target.value }))}
+                        className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Port</label>
+                      <input type="text" value={connForm.port} placeholder="443"
+                        onChange={e => setConnForm(f => ({ ...f, port: e.target.value }))}
+                        className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">App ID</label>
+                    <input type="text" value={connForm.appId} placeholder="e.g. app_001"
+                      onChange={e => setConnForm(f => ({ ...f, appId: e.target.value }))}
+                      className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">SMPP Host / IP</label>
-                    <input type="text" value={connForm.smppHost} placeholder="192.168.1.100"
-                      onChange={e => setConnForm(f => ({ ...f, smppHost: e.target.value }))}
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">API Key</label>
+                    <input type="text" value={connForm.apiKey} placeholder="e.g. orbit_smpp_key"
+                      onChange={e => setConnForm(f => ({ ...f, apiKey: e.target.value }))}
                       className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">SMPP Port</label>
-                    <input type="text" value={connForm.smppPort} placeholder="2775"
-                      onChange={e => setConnForm(f => ({ ...f, smppPort: e.target.value }))}
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">API Secret</label>
+                    <input type="password" value={connForm.apiSecret} placeholder="••••••••"
+                      onChange={e => setConnForm(f => ({ ...f, apiSecret: e.target.value }))}
                       className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">HTTP Connection</p>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">HTTP API Key</label>
-                  <input type="text" value={connForm.httpApiKey} placeholder="sk_live_..."
-                    onChange={e => setConnForm(f => ({ ...f, httpApiKey: e.target.value }))}
-                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Host</label>
+                      <input type="text" value={connForm.host} placeholder="192.168.1.100"
+                        onChange={e => setConnForm(f => ({ ...f, host: e.target.value }))}
+                        className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Port</label>
+                      <input type="text" value={connForm.port} placeholder="2775"
+                        onChange={e => setConnForm(f => ({ ...f, port: e.target.value }))}
+                        className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+
             <div className="flex gap-2 px-5 py-4 border-t border-border">
               <button onClick={() => setConnModal(null)} className="flex-1 px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
               <button onClick={handleConnSave} disabled={connSaving}
@@ -401,15 +464,13 @@ export default function AdminClients() {
               <p className="text-xs text-muted-foreground">Current balance: <span className="text-primary font-mono">₱{balanceModal.balance.toFixed(2)}</span></p>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">Amount (₱) — positive to add, negative to deduct</label>
-                <input type="number" step="0.01" value={balanceAmount}
-                  onChange={e => setBalanceAmount(e.target.value)}
+                <input type="number" step="0.01" value={balanceAmount} onChange={e => setBalanceAmount(e.target.value)}
                   placeholder="e.g. 500 or -100"
                   className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">Note / Reference</label>
-                <input type="text" value={balanceNote}
-                  onChange={e => setBalanceNote(e.target.value)}
+                <input type="text" value={balanceNote} onChange={e => setBalanceNote(e.target.value)}
                   placeholder="Payment reference, reason..."
                   className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
               </div>

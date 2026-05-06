@@ -1,11 +1,11 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useLang } from "@/hooks/useLang";
 import {
   LayoutDashboard,
   Send,
   MessageSquare,
-  Link2,
   BarChart3,
   DollarSign,
   ChevronDown,
@@ -24,56 +24,26 @@ import {
 import { cn } from "@/lib/utils";
 import ProfileModal from "@/components/ProfileModal";
 
-type Lang = "en" | "zh";
-
-function getStoredLang(): Lang {
-  try {
-    const v = localStorage.getItem("orbit_lang");
-    if (v === "zh" || v === "en") return v;
-  } catch {}
-  return "en";
-}
-
-const T: Record<string, Record<Lang, string>> = {
-  dashboard:    { en: "Dashboard",   zh: "仪表板" },
-  workspace:    { en: "Workspace",   zh: "工作区" },
-  smsSend:      { en: "SMS Send",    zh: "短信发送" },
-  smsRecords:   { en: "SMS Records", zh: "发送记录" },
-  channels:     { en: "Channels",    zh: "通道" },
-  statistics:   { en: "Statistics",  zh: "统计" },
-  finance:      { en: "Finance",     zh: "财务" },
-  adminPanel:   { en: "Admin Panel", zh: "管理后台" },
-  accountSettings: { en: "Account Settings", zh: "账户设置" },
-  signOut:      { en: "Sign out",    zh: "退出登录" },
-};
-
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
+  const { lang, setLang, t } = useLang();
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [lang, setLangState] = useState<Lang>(getStoredLang);
-
-  function toggleLang() {
-    const next: Lang = lang === "en" ? "zh" : "en";
-    setLangState(next);
-    try { localStorage.setItem("orbit_lang", next); } catch {}
-  }
-
-  function t(key: string) {
-    return T[key]?.[lang] ?? key;
-  }
 
   const NAV_ITEMS = [
     { key: "dashboard",  href: "/",          icon: LayoutDashboard },
     { key: "workspace",  href: "/workspaces", icon: Layers },
     { key: "smsSend",    href: "/tasks",      icon: Send },
     { key: "smsRecords", href: "/records",    icon: MessageSquare },
-    { key: "channels",   href: "/channels",   icon: Link2 },
     { key: "statistics", href: "/stats",      icon: BarChart3 },
     { key: "finance",    href: "/billing",    icon: DollarSign },
   ];
+
+  function toggleLang() {
+    setLang(lang === "en" ? "zh" : "en");
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col dark">

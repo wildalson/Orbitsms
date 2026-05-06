@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { X, CheckCircle, AlertCircle, Eye, EyeOff, Send, Shield, Phone, Mail, User, Lock, Server } from "lucide-react";
+import { X, CheckCircle, AlertCircle, Eye, EyeOff, Send, Shield, Phone, Mail, User, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
   onClose: () => void;
 }
 
-type Section = "info" | "email" | "phone" | "password" | "connection";
+type Section = "info" | "email" | "phone" | "password";
 
 export default function ProfileModal({ onClose }: Props) {
   const { user, token, updateUser } = useAuth();
@@ -50,7 +50,6 @@ export default function ProfileModal({ onClose }: Props) {
     return { ok: r.ok, data };
   }
 
-  // --- Info ---
   async function saveInfo() {
     setInfoSaving(true); setInfoMsg("");
     const { ok } = await callProfile({ companyName });
@@ -59,7 +58,6 @@ export default function ProfileModal({ onClose }: Props) {
     if (ok) setTimeout(() => setInfoMsg(""), 2000);
   }
 
-  // --- Email ---
   async function saveEmail() {
     setEmailSaving(true); setEmailMsg(null);
     const { ok, data } = await callProfile({ email: newEmail });
@@ -86,7 +84,6 @@ export default function ProfileModal({ onClose }: Props) {
     else setEmailMsg({ type: "err", text: data.error ?? "Incorrect code" });
   }
 
-  // --- Phone ---
   function formatPHPhone(raw: string) {
     const d = raw.replace(/\D/g, "");
     if (d.startsWith("09") && d.length <= 11) return d;
@@ -126,7 +123,6 @@ export default function ProfileModal({ onClose }: Props) {
     else setPhoneMsg({ type: "err", text: data.error ?? "Incorrect code" });
   }
 
-  // --- Password ---
   async function savePassword() {
     if (newPwd !== confirmPwd) { setPwdMsg({ type: "err", text: "Passwords do not match" }); return; }
     if (newPwd.length < 6) { setPwdMsg({ type: "err", text: "Password must be at least 6 characters" }); return; }
@@ -138,11 +134,10 @@ export default function ProfileModal({ onClose }: Props) {
   }
 
   const TABS: { id: Section; label: string; icon: any }[] = [
-    { id: "info", label: "Profile", icon: User },
-    { id: "email", label: "Email", icon: Mail },
-    { id: "phone", label: "Mobile", icon: Phone },
+    { id: "info",     label: "Profile",  icon: User },
+    { id: "email",    label: "Email",    icon: Mail },
+    { id: "phone",    label: "Mobile",   icon: Phone },
     { id: "password", label: "Security", icon: Lock },
-    { id: "connection", label: "Connection", icon: Server },
   ];
 
   return (
@@ -161,20 +156,20 @@ export default function ProfileModal({ onClose }: Props) {
 
         {/* Tabs */}
         <div className="flex border-b border-border shrink-0 overflow-x-auto">
-          {TABS.map(t => {
-            const Icon = t.icon;
+          {TABS.map(tab => {
+            const Icon = tab.icon;
             return (
               <button
-                key={t.id}
-                onClick={() => setSection(t.id)}
+                key={tab.id}
+                onClick={() => setSection(tab.id)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
-                  section === t.id
+                  section === tab.id
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {t.label}
+                {tab.label}
               </button>
             );
           })}
@@ -417,44 +412,6 @@ export default function ProfileModal({ onClose }: Props) {
                   {pwdMsg.text}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Connection Details */}
-          {section === "connection" && (
-            <div className="space-y-3">
-              <div className="p-3 rounded-lg bg-muted/20 border border-border/50">
-                <p className="text-xs text-muted-foreground">These credentials are assigned by the administrator for connecting to the OrbitSMS gateway.</p>
-              </div>
-              {[
-                { label: "SMPP Host", value: user?.smppHost },
-                { label: "SMPP Port", value: user?.smppPort },
-                { label: "SMPP System ID", value: user?.smppSystemId },
-                { label: "SMPP Password", value: user?.smppPassword, secret: true },
-                { label: "HTTP API Key", value: user?.httpApiKey, secret: true },
-              ].map(({ label, value, secret }) => (
-                <div key={label}>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type={secret ? "password" : "text"}
-                      readOnly
-                      value={value ?? ""}
-                      placeholder="Not configured — contact admin"
-                      className="flex-1 bg-background border border-input rounded px-3 py-2 text-sm font-mono text-foreground/80 focus:outline-none cursor-default"
-                    />
-                    {value && (
-                      <button
-                        onClick={() => navigator.clipboard.writeText(value)}
-                        className="px-2 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                        title="Copy"
-                      >
-                        Copy
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </div>

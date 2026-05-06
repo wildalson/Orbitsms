@@ -39,9 +39,10 @@ Demo credentials:
   - `pages/` — login, dashboard, tasks, create-task, task-detail, records, channels, billing, stats, workspaces
   - `pages/admin/` — admin-dashboard, admin-clients, admin-client-detail, admin-channels, admin-logs, admin-settings
   - `components/Layout.tsx` — client top nav with Workspace nav item, profile modal trigger, verification badges
-  - `components/AdminLayout.tsx` — admin sidebar layout (Channels nav item added)
-  - `components/ProfileModal.tsx` — 5-tab profile modal (Profile/Email/Mobile/Security/Connection)
+  - `components/AdminLayout.tsx` — admin sidebar layout (no Channels nav)
+  - `components/ProfileModal.tsx` — 4-tab profile modal (Profile/Email/Mobile/Security)
   - `hooks/useAuth.tsx` — auth context with role (admin/client), localStorage token, updateUser()
+  - `hooks/useLang.tsx` — LanguageProvider context + `useLang()` hook, full EN/中文 dictionary
 
 ## Architecture decisions
 
@@ -62,20 +63,18 @@ Demo credentials:
 - Workspace page: create/view/delete workspaces (SPID-based)
 - SMS Tasks: list with "All Workspaces" filter, create, view detail with per-recipient delivery records
 - SMS Records: filterable delivery history with Sender ID + SMS Content columns, real CSV export
-- Channels: clients see read-only list; admin manages via admin panel (no operator/workspace in form)
 - Billing: expense history with ₱ PHP balance display and CSV export
 - **Profile Settings Modal** (accessible from user menu → Account Settings):
   - Profile tab: change display/company name
   - Email tab: change email, verify via OTP (devOtp shown in response for demo)
   - Mobile tab: PH number only (63XXXXXXXXXX), change + verify via OTP
   - Security tab: change password (current + new + confirm)
-  - Connection tab: read-only SMPP/HTTP credentials set by admin
+  - (Connection tab removed — credentials managed by admin only)
 - **Admin Panel** (Super Admin only at `/admin`):
   - Dashboard: system-wide stats
-  - Client Management: create, edit, suspend, delete + SMPP/HTTP connection config per client
+  - Client Management: create, edit, suspend, delete; "Set Channel" modal with HTTP/SMPP tabs
   - Balance Adjustment: add or deduct ₱ balance per client
   - Permission Settings: per-client toggles
-  - Channels: full CRUD (no operator/workspace field) — admin-managed shared infrastructure
   - SMS Logs: all delivery records with CSV export
   - System Settings: currency, default SMS rate, etc.
 
@@ -88,13 +87,15 @@ Demo credentials:
 - "Product" renamed to "Workspace" everywhere in UI
 - Channel type defaults to "transmitter"
 - Demo account section removed from login page (production-ready)
-- Language switcher (EN / 中文) in top nav — persists to localStorage, translates nav items + user menu
+- Language switcher (EN / 中文) in top nav — persists to localStorage, translates ALL pages (nav, tables, labels, buttons, stats)
+- Channels nav removed from both client Layout and admin AdminLayout
+- ProfileModal Connection tab removed (4 tabs only: Profile/Email/Mobile/Security)
 - Workspace creation auto-generates SPID (no user input required)
 - Sender ID is optional in Create Task (blank = use default)
 - Excel/CSV upload in Create Task reads first column for phone numbers (xlsx library)
 - Currency fixed to ₱ throughout Statistics page
 - Admin Clients: connection status badge (Connected / Pending Setup) based on whether smppHost/httpApiKey is set
-- Admin Clients: "Set Channel" (plug icon) action per client — modal with API Key (smppSystemId), API Secret (smppPassword), SMPP Host/Port, HTTP API Key
+- Admin Clients: "Set Channel" modal uses HTTP/SMPP tab selector. HTTP: API Key + Secret + Host/Port. SMPP: App ID + API Key + Secret + Host/Port
 - Admin Settings: Provider/API Settings section removed
 
 ## Gotchas

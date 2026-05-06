@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useLang } from "@/hooks/useLang";
 import { useGetDashboardSummary, useGetDashboardTraffic, useListProducts } from "@workspace/api-client-react";
 import { TrendingUp, Send, CheckCircle, XCircle, Activity, CreditCard, Package } from "lucide-react";
 import {
@@ -16,6 +17,7 @@ const PRODUCT_COLORS = ["#00cccc", "#3b82f6", "#a855f7", "#f59e0b", "#10b981"];
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { t } = useLang();
   const { data: summary } = useGetDashboardSummary();
   const { data: traffic } = useGetDashboardTraffic();
   const { data: products } = useListProducts();
@@ -36,48 +38,12 @@ export default function DashboardPage() {
   const balance = summary?.balance ?? user?.balance ?? 0;
 
   const stats = [
-    {
-      label: "Balance (₱ PHP)",
-      value: `₱${balance.toFixed(2)}`,
-      icon: CreditCard,
-      color: "text-primary",
-      bg: "bg-primary/10",
-    },
-    {
-      label: "Today Sent",
-      value: summary?.todaySent ?? 0,
-      icon: Send,
-      color: "text-blue-400",
-      bg: "bg-blue-400/10",
-    },
-    {
-      label: "Month Sent",
-      value: summary?.monthSent?.toLocaleString() ?? 0,
-      icon: TrendingUp,
-      color: "text-purple-400",
-      bg: "bg-purple-400/10",
-    },
-    {
-      label: "Today Delivered",
-      value: summary?.todayDelivered ?? 0,
-      icon: CheckCircle,
-      color: "text-green-400",
-      bg: "bg-green-400/10",
-    },
-    {
-      label: "Today Failed",
-      value: summary?.todayFailed ?? 0,
-      icon: XCircle,
-      color: "text-destructive",
-      bg: "bg-destructive/10",
-    },
-    {
-      label: "Success Rate",
-      value: summary ? `${summary.successRate}%` : "—",
-      icon: Activity,
-      color: "text-amber-400",
-      bg: "bg-amber-400/10",
-    },
+    { label: t("balancePhp"),      value: `₱${balance.toFixed(2)}`,                         icon: CreditCard, color: "text-primary",      bg: "bg-primary/10" },
+    { label: t("todaySent"),       value: summary?.todaySent ?? 0,                            icon: Send,       color: "text-blue-400",     bg: "bg-blue-400/10" },
+    { label: t("monthSent"),       value: summary?.monthSent?.toLocaleString() ?? 0,          icon: TrendingUp, color: "text-purple-400",   bg: "bg-purple-400/10" },
+    { label: t("todayDelivered"),  value: summary?.todayDelivered ?? 0,                       icon: CheckCircle,color: "text-green-400",    bg: "bg-green-400/10" },
+    { label: t("todayFailed"),     value: summary?.todayFailed ?? 0,                          icon: XCircle,    color: "text-destructive",  bg: "bg-destructive/10" },
+    { label: t("successRate"),     value: summary ? `${summary.successRate}%` : "—",          icon: Activity,   color: "text-amber-400",    bg: "bg-amber-400/10" },
   ];
 
   return (
@@ -90,10 +56,10 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-foreground">
-              Welcome back, {user?.companyName || user?.username}
+              {t("welcomeBack")}, {user?.companyName || user?.username}
             </h2>
             <div className="flex flex-wrap gap-4 mt-1 text-xs text-muted-foreground">
-              <span>Balance: <span className="text-primary font-mono font-semibold">₱{balance.toFixed(2)}</span></span>
+              <span>{t("balance")}: <span className="text-primary font-mono font-semibold">₱{balance.toFixed(2)}</span></span>
               {user?.phone && <span className="font-mono">{user.phone}</span>}
               {user?.email && <span>{user.email}</span>}
             </div>
@@ -120,7 +86,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Traffic chart */}
         <div className="lg:col-span-2 bg-card border border-card-border rounded-lg p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">SMS Traffic (This Month)</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-4">{t("smsTrafficMonth")}</h3>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData}>
@@ -151,7 +117,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">
-              No traffic data for this month
+              {t("noTrafficData")}
             </div>
           )}
         </div>
@@ -160,7 +126,7 @@ export default function DashboardPage() {
         <div className="bg-card border border-card-border rounded-lg p-5">
           <div className="flex items-center gap-2 mb-4">
             <Package className="w-4 h-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Workspace</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("workspaceList")}</h3>
           </div>
           {products && products.length > 0 ? (
             <div className="space-y-3">
@@ -181,12 +147,12 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No workspace configured</p>
+            <p className="text-sm text-muted-foreground">{t("noWorkspace")}</p>
           )}
 
           {summary && summary.productBalances.length > 0 && (
             <div className="mt-4 pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Balance Summary</p>
+              <p className="text-xs text-muted-foreground mb-2">{t("balanceSummary")}</p>
               {summary.productBalances.map((pb) => (
                 <div key={pb.productId} className="flex items-center justify-between py-1">
                   <span className="text-xs text-muted-foreground">{pb.productName}</span>

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/hooks/useLang";
 import Layout from "@/components/Layout";
 import AdminLayout from "@/components/AdminLayout";
 import LoginPage from "@/pages/login";
@@ -11,7 +12,6 @@ import TasksPage from "@/pages/tasks";
 import CreateTaskPage from "@/pages/create-task";
 import TaskDetailPage from "@/pages/task-detail";
 import RecordsPage from "@/pages/records";
-import ChannelsPage from "@/pages/channels";
 import BillingPage from "@/pages/billing";
 import StatsPage from "@/pages/stats";
 import WorkspacesPage from "@/pages/workspaces";
@@ -88,7 +88,6 @@ function Router() {
       <Route path="/tasks/:id" component={() => <ProtectedRoute component={TaskDetailPage} />} />
       <Route path="/tasks" component={() => <ProtectedRoute component={TasksPage} />} />
       <Route path="/records" component={() => <ProtectedRoute component={RecordsPage} />} />
-      <Route path="/channels" component={() => <ProtectedRoute component={ChannelsPage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
       <Route path="/stats" component={() => <ProtectedRoute component={StatsPage} />} />
       <Route component={NotFound} />
@@ -100,12 +99,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <LanguageProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </LanguageProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
