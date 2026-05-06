@@ -1,6 +1,6 @@
 # SMS Gateway
 
-A full-stack SMS Gateway management platform (similar to Chinese SMS aggregator platforms) with SMPP/HTTP channel management, SMS task sending, delivery records, billing, and a professional dark-themed dashboard UI.
+A full-stack SMS Gateway management platform (Chinese SMS aggregator style) with SMPP/HTTP channel management, SMS task sending, delivery records, billing, a professional dark-themed dashboard UI, and a full Super Admin panel for client management.
 
 ## Run & Operate
 
@@ -12,7 +12,9 @@ A full-stack SMS Gateway management platform (similar to Chinese SMS aggregator 
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
-Demo credentials: username `langdemo` / password `123456`
+Demo credentials:
+- Client: `langdemo` / `123456`
+- Super Admin: `admin` / `admin123`
 
 ## Stack
 
@@ -30,35 +32,48 @@ Demo credentials: username `langdemo` / password `123456`
 - `lib/api-client-react/src/generated/` — generated React Query hooks and types (do not edit)
 - `lib/api-zod/src/generated/` — generated Zod schemas (do not edit)
 - `lib/db/src/schema/` — Drizzle schema: users, products, channels, tasks, message_records, billing_records
-- `artifacts/api-server/src/routes/` — all Express route handlers
+- `artifacts/api-server/src/routes/` — all Express route handlers (admin.ts for admin endpoints)
 - `artifacts/sms-gateway/src/` — React frontend
-  - `pages/` — login, dashboard, tasks, create-task, task-detail, records, channels, billing
-  - `components/Layout.tsx` — top nav with auth menu
-  - `hooks/useAuth.tsx` — auth context with localStorage token
+  - `pages/` — login, dashboard, tasks, create-task, task-detail, records, channels, billing, stats
+  - `pages/admin/` — admin-dashboard, admin-clients, admin-client-detail, admin-logs, admin-settings
+  - `components/Layout.tsx` — client top nav with workspace selector and ₱ balance display
+  - `components/AdminLayout.tsx` — admin sidebar layout
+  - `hooks/useAuth.tsx` — auth context with role (admin/client), localStorage token
 
 ## Architecture decisions
 
 - Auth uses simple Base64 token: `userId:timestamp:randomHex`. Token stored in localStorage and attached via `setAuthTokenGetter` from `@workspace/api-client-react`.
 - All mutations use `{ data: Body }` wrapper (Orval convention).
 - React Query hooks take `(params, options)` — params first, options second.
+- Admin routes at `/api/admin/*` are guarded by inline `requireAdmin()` that decodes Bearer token and checks `user.role === "admin"`.
+- Admin frontend routes at `/admin/*` use `AdminRoute` component that checks `user.role === "admin"`.
 - The codegen script patches `lib/api-zod/src/index.ts` after orval to fix duplicate export conflict.
-- App defaults to dark mode via `.dark` class on root container in Layout.tsx and login page.
+- App defaults to dark mode via `.dark` class on root container in Layout.tsx and AdminLayout.tsx.
 
 ## Product
 
-- Login/Register with demo seeded data
-- Dashboard with stats cards and traffic line chart per product
+- Login/Register with demo seeded data; role-based redirect (admin → /admin, client → /)
+- Dashboard with stats cards and traffic line chart per workspace (formerly "product")
 - SMS Tasks: list, create, view detail with per-recipient delivery records
-- SMS Records: filterable delivery history with stats summary
-- Channels: SMPP/HTTP channel management (CRUD modal)
-- Billing: expense history with summary stats
-- Top nav with product selector dropdown and user menu with balance display
+- SMS Records: filterable delivery history with Sender ID + SMS Content columns, real CSV export
+- Channels: SMPP/HTTP channel management (CRUD modal), channelType defaults to "transmitter"
+- Billing: expense history with ₱ PHP balance display and CSV export
+- **Admin Panel** (Super Admin only at `/admin`):
+  - Dashboard: system-wide stats (clients, revenue, delivery rate)
+  - Client Management: create, edit, suspend, delete client accounts
+  - Balance Adjustment: add or deduct ₱ balance per client with reference notes
+  - Permission Settings: per-client toggles (Send SMS, Bulk SMS, Sender ID, Export, etc.)
+  - SMS Logs: all delivery records across all clients with CSV export
+  - System Settings: currency, default SMS rate, charging logic, provider API config
 
 ## User preferences
 
 - Dark command-center theme with cyber cyan primary (`--primary: 180 100% 40%`)
 - Professional look similar to Chinese SMS aggregator platforms
 - Compact data-dense tables preferred
+- Currency: PHP (₱) throughout all balance displays
+- "Product" renamed to "Workspace" everywhere in UI
+- Channel type defaults to "transmitter"
 
 ## Gotchas
 
@@ -66,6 +81,7 @@ Demo credentials: username `langdemo` / password `123456`
 - Orval mutations wrap body in `{ data: ... }` — always pass `{ data: myBody }` to `mutateAsync`
 - After codegen, index.ts is overwritten by the patch step — do not manually edit generated files
 - Channels and records use `useListChannels(options?)` (no params) vs `useListRecords(params?, options?)`
+- Admin pages use direct `fetch()` calls (not React Query hooks) since admin routes are not in the OpenAPI spec
 
 ## Pointers
 

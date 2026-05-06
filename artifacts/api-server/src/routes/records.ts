@@ -33,6 +33,8 @@ router.get("/records", async (req, res) => {
   const records = await db.select({
     record: messageRecordsTable,
     taskName: tasksTable.name,
+    messageContent: tasksTable.messageContent,
+    senderId: tasksTable.senderId,
     productName: productsTable.name,
   })
     .from(messageRecordsTable)
@@ -52,6 +54,8 @@ router.get("/records", async (req, res) => {
       id: r.record.id,
       taskId: r.record.taskId,
       taskName: r.taskName ?? "",
+      messageContent: r.messageContent ?? "",
+      senderId: r.senderId ?? "",
       productId: r.record.productId,
       productName: r.productName ?? "",
       recipient: r.record.recipient,

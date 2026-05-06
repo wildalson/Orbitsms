@@ -6,6 +6,10 @@ interface AuthUser {
   username: string;
   email: string;
   phone?: string | null;
+  companyName?: string | null;
+  role: "admin" | "client";
+  status: "active" | "suspended";
+  smsRate: number;
   balance: number;
   createdAt: string;
 }
@@ -29,9 +33,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem("sms_token");
     const storedUser = localStorage.getItem("sms_user");
     if (stored && storedUser) {
-      setToken(stored);
-      setUser(JSON.parse(storedUser));
-      setAuthTokenGetter(() => stored);
+      try {
+        const parsed = JSON.parse(storedUser);
+        setToken(stored);
+        setUser(parsed);
+        setAuthTokenGetter(() => stored);
+        // Re-validate token with server to get fresh user data (role etc.)
+        fetch("/api/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
+          .then(r => r.ok ? r.json() : null)
+          .then(fresh => {
+            if (fresh) {
+              setUser(fresh);
+              localStorage.setItem("sms_user", JSON.stringify(fresh));
+            }
+          })
+          .catch(() => {});
+      } catch {
+        localStorage.removeItem("sms_token");
+        localStorage.removeItem("sms_user");
+      }
     }
     setIsLoading(false);
   }, []);

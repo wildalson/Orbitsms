@@ -20,7 +20,6 @@ export default function DashboardPage() {
   const { data: traffic } = useGetDashboardTraffic();
   const { data: products } = useListProducts();
 
-  // Build chart data: group by day, each product is a series
   const chartData = (() => {
     if (!traffic || !products) return [];
     const days = Array.from(new Set(traffic.map((t) => t.day))).sort((a, b) => a - b);
@@ -34,10 +33,12 @@ export default function DashboardPage() {
     });
   })();
 
+  const balance = summary?.balance ?? user?.balance ?? 0;
+
   const stats = [
     {
-      label: "Balance (USD)",
-      value: summary ? summary.balance.toFixed(4) : user?.balance.toFixed(4) ?? "—",
+      label: "Balance (₱ PHP)",
+      value: `₱${balance.toFixed(2)}`,
       icon: CreditCard,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -92,7 +93,7 @@ export default function DashboardPage() {
               Welcome back, {user?.username}
             </h2>
             <div className="flex flex-wrap gap-4 mt-1 text-xs text-muted-foreground">
-              <span>Balance: <span className="text-primary font-mono font-semibold">{summary?.balance?.toFixed(4) ?? user?.balance.toFixed(4)} USD</span></span>
+              <span>Balance: <span className="text-primary font-mono font-semibold">₱{balance.toFixed(2)}</span></span>
               {user?.phone && <span>Phone: {user.phone}</span>}
               {user?.email && <span>Email: {user.email}</span>}
             </div>
@@ -162,11 +163,11 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Product balances */}
+        {/* Workspace balances */}
         <div className="bg-card border border-card-border rounded-lg p-5">
           <div className="flex items-center gap-2 mb-4">
             <Package className="w-4 h-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">My Products</h3>
+            <h3 className="text-sm font-semibold text-foreground">Workspace</h3>
           </div>
           {products && products.length > 0 ? (
             <div className="space-y-3">
@@ -182,12 +183,12 @@ export default function DashboardPage() {
                     <p className="text-xs font-medium text-foreground">{p.name}</p>
                     <p className="text-xs text-muted-foreground font-mono">spid: {p.spid}</p>
                   </div>
-                  <p className="text-xs font-mono font-semibold text-foreground">{Number(p.balance).toFixed(4)}</p>
+                  <p className="text-xs font-mono font-semibold text-foreground">₱{Number(p.balance).toFixed(2)}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No products configured</p>
+            <p className="text-sm text-muted-foreground">No workspace configured</p>
           )}
 
           {summary && summary.productBalances.length > 0 && (
@@ -196,7 +197,7 @@ export default function DashboardPage() {
               {summary.productBalances.map((pb) => (
                 <div key={pb.productId} className="flex items-center justify-between py-1">
                   <span className="text-xs text-muted-foreground">{pb.productName}</span>
-                  <span className="text-xs font-mono text-foreground">{pb.balance.toFixed(4)}</span>
+                  <span className="text-xs font-mono text-foreground">₱{pb.balance.toFixed(2)}</span>
                 </div>
               ))}
             </div>

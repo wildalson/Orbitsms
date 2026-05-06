@@ -1,0 +1,168 @@
+Build a web-based SMS Management Platform with an Admin Panel and Client Accounts.
+
+Main Goal:
+The system should allow the main admin to manage SMS clients, assign permissions, set SMS pricing per client, manage balances/credits, and monitor SMS sending activity.
+
+Core User Roles:
+
+1. Super Admin
+- Can log in to the main admin dashboard.
+- Can create, edit, suspend, and delete client accounts.
+- Can assign permissions to each client account.
+- Can set SMS charge/rate per client.
+- Can manually add or deduct client SMS balance/credits.
+- Can view all client activity, SMS logs, payments, balances, and delivery reports.
+- Can manage SMS provider/API settings.
+
+2. Client Account
+- Can log in to their own dashboard.
+- Can send SMS if they have enough balance.
+- Can view their own SMS balance.
+- Can view their own SMS sending history.
+- Can view delivery status/reports.
+- Can manage contact lists if permission is enabled.
+- Can send single SMS or bulk SMS depending on permission.
+
+Required Features:
+
+1. Authentication & Security
+- Login/logout
+- Role-based access control
+- Password reset
+- Secure password hashing
+- Account suspension/blocking
+- Activity logs
+
+2. Admin Dashboard
+- Total SMS sent
+- Total successful SMS
+- Total failed SMS
+- Total revenue
+- Total client balances
+- Client list
+- Recent transactions
+- Recent SMS activity
+
+3. Client Management
+- Create client account
+- Set client name, email, password, company name
+- Set SMS rate per message
+- Set initial balance
+- Edit account details
+- Suspend/activate account
+- Delete account
+- View client usage
+
+4. Permission Settings
+Admin should be able to enable or disable features per client:
+- Send SMS
+- Send bulk SMS
+- Upload contacts
+- View delivery reports
+- Access API credentials
+- Use sender ID
+- Export reports
+
+5. Balance & Charging System
+- Admin can add balance manually.
+- Admin can deduct balance manually.
+- Each client has their own wallet/balance.
+- Every SMS sent should deduct based on the client’s assigned SMS rate.
+- Example: If client rate is ₱0.25 per SMS and client sends 1,000 SMS, deduct ₱250.
+- Prevent sending if balance is insufficient.
+- Keep full balance transaction history.
+
+6. SMS Rate Management
+- Admin can set different SMS rates per client.
+- Rate can be changed anytime.
+- System should use the active rate at the time of sending.
+- SMS logs should record the rate charged per message.
+
+7. SMS Sending
+- Single SMS sending
+- Bulk SMS sending via CSV upload
+- Message character counter
+- Recipient number validation
+- SMS preview before sending
+- Scheduled SMS sending if possible
+- Status: pending, sent, delivered, failed
+
+8. SMS Logs & Reports
+- Message ID
+- Client account
+- Recipient number
+- Message content
+- SMS cost charged
+- Provider cost if available
+- Delivery status
+- Date/time sent
+- Export to CSV/Excel
+
+9. Delivery Reports
+- Track successful, failed, pending, and delivered messages.
+- Show delivery status per number.
+- Support webhook callback from SMS provider if available.
+
+10. SMS Provider Integration
+- Prepare the system so it can connect to an SMS provider API.
+- Admin should be able to configure:
+  - API URL
+  - API key
+  - API secret
+  - Sender ID if applicable
+- The code should be structured so we can later integrate providers like Laaffic API or SMPP.
+
+11. Contact Management
+- Clients can upload contacts.
+- Create contact groups.
+- Import CSV contacts.
+- Delete contacts.
+- Send SMS to groups.
+
+12. Payment / Balance Records
+- Manual top-up record by admin.
+- Payment reference field.
+- Notes field.
+- Balance history visible to admin.
+- Optional client-visible top-up history.
+
+13. System Settings
+- Default SMS rate
+- Default currency: PHP
+- Default sender name
+- Low balance warning
+- Maintenance mode
+
+14. Technical Requirements
+- Build a clean and modern web app.
+- Use a database to store users, balances, rates, SMS logs, permissions, and transactions.
+- Must have clean UI for both admin and client.
+- Must be scalable and easy to connect to an external SMS API later.
+- Include proper error handling.
+- Include basic documentation on how to run and configure the app.
+
+Preferred Pages:
+- Login Page
+- Admin Dashboard
+- Client Dashboard
+- Client Management Page
+- Add/Edit Client Page
+- Permission Settings Page
+- Balance Management Page
+- SMS Sending Page
+- Bulk SMS Upload Page
+- SMS Logs Page
+- Delivery Reports Page
+- Provider/API Settings Page
+- Contact Management Page
+- Transaction History Page
+- System Settings Page
+
+Important Business Logic:
+- SMS can only be sent if client balance is enough.
+- SMS charge should be deducted automatically after sending.
+- Failed messages should have configurable charging logic:
+  Option A: charge all submitted messages.
+  Option B: charge only successfully delivered messages.
+  Please build the system in a way that this setting can be changed.
+- Admin must be able to see profit calculation later by comparing provider cost and client selling rate.

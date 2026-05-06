@@ -7,6 +7,7 @@ import tasksRouter from "./tasks";
 import recordsRouter from "./records";
 import billingRouter from "./billing";
 import dashboardRouter from "./dashboard";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(tasksRouter);
 router.use(recordsRouter);
 router.use(billingRouter);
 router.use(dashboardRouter);
+router.use(adminRouter);
 
 export default router;

@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Activity,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListProducts } from "@workspace/api-client-react";
@@ -34,7 +35,6 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { data: products } = useListProducts();
   const [currentProductIdx, setCurrentProductIdx] = useState(0);
-  const currentProduct = products?.[currentProductIdx];
 
   return (
     <div className="min-h-screen bg-background flex flex-col dark">
@@ -69,10 +69,10 @@ export default function Layout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="flex items-center gap-3 ml-auto">
-          {/* Product selector */}
+          {/* Workspace selector */}
           {products && products.length > 0 && (
             <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-2 py-1">
-              <span className="text-muted-foreground/60">Current:</span>
+              <span className="text-muted-foreground/60">Workspace:</span>
               <select
                 className="bg-transparent text-foreground border-none outline-none text-xs cursor-pointer"
                 value={currentProductIdx}
@@ -100,15 +100,23 @@ export default function Layout({ children }: { children: ReactNode }) {
               <ChevronDown className="w-3 h-3" />
             </button>
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-popover-border rounded shadow-lg z-50">
+              <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-popover-border rounded shadow-lg z-50">
                 <div className="px-3 py-2 border-b border-border">
                   <p className="text-xs font-medium text-foreground">{user?.username}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <div className="px-3 py-2 border-b border-border">
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <p className="text-sm font-mono font-semibold text-primary">{user?.balance.toFixed(4)} USD</p>
+                  <p className="text-xs text-muted-foreground">Balance (PHP)</p>
+                  <p className="text-sm font-mono font-semibold text-primary">₱{(user?.balance ?? 0).toFixed(2)}</p>
                 </div>
+                {user?.role === "admin" && (
+                  <Link href="/admin">
+                    <span className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer border-b border-border">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Admin Panel
+                    </span>
+                  </Link>
+                )}
                 <button
                   onClick={() => { setUserMenuOpen(false); logout(); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors"
@@ -149,6 +157,14 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            {user?.role === "admin" && (
+              <Link href="/admin">
+                <span onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded text-sm font-medium cursor-pointer transition-colors text-red-400 hover:bg-red-500/10">
+                  <ShieldCheck className="w-4 h-4" />
+                  Admin Panel
+                </span>
+              </Link>
+            )}
           </nav>
         </div>
       )}

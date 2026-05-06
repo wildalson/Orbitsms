@@ -14,6 +14,21 @@ function generateToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}:${crypto.randomBytes(16).toString("hex")}`).toString("base64");
 }
 
+function formatUser(user: any) {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    phone: user.phone,
+    companyName: user.companyName,
+    role: user.role,
+    status: user.status,
+    smsRate: Number(user.smsRate),
+    balance: Number(user.balance),
+    createdAt: user.createdAt,
+  };
+}
+
 router.post("/auth/login", async (req, res) => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -26,18 +41,12 @@ router.post("/auth/login", async (req, res) => {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
+  if (user.status === "suspended") {
+    res.status(403).json({ error: "Account suspended. Please contact your administrator." });
+    return;
+  }
   const token = generateToken(user.id);
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      phone: user.phone,
-      balance: Number(user.balance),
-      createdAt: user.createdAt,
-    },
-  });
+  res.json({ token, user: formatUser(user) });
 });
 
 router.post("/auth/register", async (req, res) => {
@@ -57,20 +66,12 @@ router.post("/auth/register", async (req, res) => {
     password: hashPassword(password),
     email,
     phone: phone ?? null,
-    balance: "10000",
+    role: "client",
+    status: "active",
+    balance: "1000",
   }).returning();
   const token = generateToken(user.id);
-  res.status(201).json({
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      phone: user.phone,
-      balance: Number(user.balance),
-      createdAt: user.createdAt,
-    },
-  });
+  res.status(201).json({ token, user: formatUser(user) });
 });
 
 router.get("/auth/me", async (req, res) => {
@@ -88,14 +89,7 @@ router.get("/auth/me", async (req, res) => {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    res.json({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      phone: user.phone,
-      balance: Number(user.balance),
-      createdAt: user.createdAt,
-    });
+    res.json(formatUser(user));
   } catch {
     res.status(401).json({ error: "Invalid token" });
   }

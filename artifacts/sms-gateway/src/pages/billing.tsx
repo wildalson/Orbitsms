@@ -1,6 +1,28 @@
 import { useState } from "react";
 import { useListBilling, useGetBillingSummary, useListProducts } from "@workspace/api-client-react";
-import { ChevronLeft, ChevronRight, DollarSign, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+
+function exportToCsv(records: any[]) {
+  const headers = ["ID", "Workspace", "Type", "Task", "Amount (₱)", "Messages", "Description", "Created At"];
+  const rows = records.map(r => [
+    r.id,
+    r.productName,
+    r.type,
+    r.taskName ?? "",
+    r.amount.toFixed(6),
+    r.messageCount,
+    `"${(r.description ?? "").replace(/"/g, '""')}"`,
+    new Date(r.createdAt).toLocaleString(),
+  ]);
+  const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `billing-records-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function BillingPage() {
   const [page, setPage] = useState(1);
@@ -21,17 +43,20 @@ export default function BillingPage() {
           <h1 className="text-lg font-bold text-foreground">Financial Records</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Billing history and expense breakdown</p>
         </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors">
+        <button
+          onClick={() => data?.data && exportToCsv(data.data)}
+          disabled={!data?.data?.length}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           <Download className="w-3.5 h-3.5" />
-          Export
+          Export CSV
         </button>
       </div>
 
-      {/* Summary stats */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { label: "Total Expense", value: `$${summary.totalExpense.toFixed(4)}`, color: "text-primary" },
+            { label: "Total Expense", value: `₱${summary.totalExpense.toFixed(2)}`, color: "text-primary" },
             { label: "Total Messages", value: summary.totalMessages.toLocaleString(), color: "text-foreground" },
             { label: "Total Sent", value: summary.totalSent.toLocaleString(), color: "text-blue-400" },
             { label: "Delivered", value: summary.totalDelivered.toLocaleString(), color: "text-green-400" },
@@ -46,29 +71,27 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex gap-2">
         <select
           value={productId ?? ""}
           onChange={(e) => { setProductId(e.target.value ? Number(e.target.value) : undefined); setPage(1); }}
           className="bg-card border border-border rounded px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary/50"
         >
-          <option value="">All Products</option>
+          <option value="">All Workspaces</option>
           {products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
 
-      {/* Table */}
       <div className="bg-card border border-card-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">ID</th>
-                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Product</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Workspace</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Type</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Task</th>
-                <th className="text-right px-4 py-3 text-muted-foreground font-medium">Amount (USD)</th>
+                <th className="text-right px-4 py-3 text-muted-foreground font-medium">Amount (₱)</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Messages</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Description</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Created</th>
@@ -106,7 +129,7 @@ export default function BillingPage() {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground max-w-[120px] truncate">{b.taskName ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-primary">{b.amount.toFixed(6)}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-primary">₱{b.amount.toFixed(6)}</td>
                     <td className="px-4 py-2.5 text-right font-mono">{b.messageCount.toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate">{b.description}</td>
                     <td className="px-4 py-2.5 text-right text-muted-foreground">

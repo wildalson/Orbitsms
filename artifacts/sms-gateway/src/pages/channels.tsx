@@ -29,13 +29,13 @@ const EMPTY_FORM: ChannelForm = {
   username: "",
   password: "",
   maxBindings: 5,
-  channelType: "transceiver",
+  channelType: "transmitter",
   productId: 0,
 };
 
 export default function ChannelsPage() {
   const qc = useQueryClient();
-  const { data: channels, isLoading } = useListChannels({ query: { queryKey: getListChannelsQueryKey() } });
+  const { data: channels, isLoading } = useListChannels();
   const { data: products } = useListProducts();
   const createMut = useCreateChannel();
   const updateMut = useUpdateChannel();
@@ -65,7 +65,7 @@ export default function ChannelsPage() {
   }
 
   async function handleSave() {
-    if (!form.productId) { setError("Select a product"); return; }
+    if (!form.productId) { setError("Select a workspace"); return; }
     setError("");
     try {
       if (editId) {
@@ -104,7 +104,6 @@ export default function ChannelsPage() {
         </button>
       </div>
 
-      {/* Channel list */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
@@ -170,7 +169,7 @@ export default function ChannelsPage() {
                   <span className="font-mono text-foreground">{ch.maxBindings}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Product ID</span>
+                  <span className="text-muted-foreground">Workspace</span>
                   <span className="font-mono text-foreground">{products?.find(p => p.id === ch.productId)?.name ?? ch.productId}</span>
                 </div>
               </div>
@@ -179,7 +178,6 @@ export default function ChannelsPage() {
         )}
       </div>
 
-      {/* Form modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-card-border rounded-lg w-full max-w-md shadow-xl">
@@ -226,18 +224,18 @@ export default function ChannelsPage() {
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Channel Type <span className="text-destructive">*</span></label>
                   <select value={form.channelType} onChange={(e) => setForm(f => ({ ...f, channelType: e.target.value as any }))}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50">
-                    <option value="transceiver">Transceiver</option>
                     <option value="transmitter">Transmitter</option>
                     <option value="receiver">Receiver</option>
+                    <option value="transceiver">Transceiver</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Product <span className="text-destructive">*</span></label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Workspace <span className="text-destructive">*</span></label>
                 <select value={form.productId} onChange={(e) => setForm(f => ({ ...f, productId: Number(e.target.value) }))}
                   className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50">
-                  <option value={0}>Select product</option>
+                  <option value={0}>Select workspace</option>
                   {products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>

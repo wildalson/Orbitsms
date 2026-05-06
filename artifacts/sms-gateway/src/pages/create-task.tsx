@@ -37,7 +37,7 @@ export default function CreateTaskPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!productId) { setError("Select a product"); return; }
+    if (!productId) { setError("Select a workspace"); return; }
     if (recipients.length === 0) { setError("Add at least one recipient"); return; }
     if (!messageContent.trim()) { setError("Enter a message"); return; }
     setError("");
@@ -67,7 +67,6 @@ export default function CreateTaskPage() {
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main form */}
           <div className="lg:col-span-2 space-y-5">
             {error && (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded bg-destructive/10 border border-destructive/30 text-destructive text-sm">
@@ -76,7 +75,6 @@ export default function CreateTaskPage() {
               </div>
             )}
 
-            {/* Task details */}
             <div className="bg-card border border-card-border rounded-lg p-5">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="w-4 h-4 text-muted-foreground" />
@@ -97,7 +95,7 @@ export default function CreateTaskPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Application Account <span className="text-destructive">*</span>
+                    Workspace <span className="text-destructive">*</span>
                   </label>
                   <select
                     value={productId}
@@ -105,7 +103,7 @@ export default function CreateTaskPage() {
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                     required
                   >
-                    <option value={0}>Select application</option>
+                    <option value={0}>Select workspace</option>
                     {products?.map((p) => (
                       <option key={p.id} value={p.id}>{p.name} (spid: {p.spid})</option>
                     ))}
@@ -123,7 +121,6 @@ export default function CreateTaskPage() {
               </div>
             </div>
 
-            {/* Recipients */}
             <div className="bg-card border border-card-border rounded-lg p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Send className="w-4 h-4 text-muted-foreground" />
@@ -164,7 +161,6 @@ export default function CreateTaskPage() {
               </p>
             </div>
 
-            {/* Message content */}
             <div className="bg-card border border-card-border rounded-lg p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">SMS Content</h2>
               <div className="mb-2">
@@ -198,7 +194,6 @@ export default function CreateTaskPage() {
             </button>
           </div>
 
-          {/* Config summary + phone preview */}
           <div className="space-y-4">
             <div className="bg-card border border-card-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
@@ -219,17 +214,16 @@ export default function CreateTaskPage() {
                   <span className="text-foreground">Immediate</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Product</span>
+                  <span className="text-muted-foreground">Workspace</span>
                   <span className="text-foreground">{selectedProduct?.name ?? "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Est. Cost</span>
-                  <span className="text-primary font-mono">${(recipients.length * 0.005 * smsCount).toFixed(6)}</span>
+                  <span className="text-primary font-mono">₱{(recipients.length * 0.25 * smsCount).toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Phone preview */}
             <div className="flex flex-col items-center">
               <div className="w-52 bg-[#1a1a2e] rounded-3xl border-4 border-[#252545] shadow-xl overflow-hidden">
                 <div className="bg-[#252545] py-2 text-center">
