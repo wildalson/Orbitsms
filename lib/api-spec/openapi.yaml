@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SMS Gateway API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: dashboard
+    description: Dashboard analytics
+  - name: products
+    description: SMS products / applications
+  - name: channels
+    description: SMPP and HTTP channels
+  - name: tasks
+    description: SMS send tasks
+  - name: records
+    description: Message delivery records
+  - name: billing
+    description: Billing and financial records
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +37,841 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/traffic:
+    get:
+      operationId: getDashboardTraffic
+      tags: [dashboard]
+      summary: Get daily SMS traffic for the current month
+      responses:
+        "200":
+          description: Daily traffic data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrafficPoint"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a product by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  /channels:
+    get:
+      operationId: listChannels
+      tags: [channels]
+      summary: List channels
+      responses:
+        "200":
+          description: List of channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Channel"
+    post:
+      operationId: createChannel
+      tags: [channels]
+      summary: Create a channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChannelBody"
+      responses:
+        "201":
+          description: Created channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+
+  /channels/{id}:
+    get:
+      operationId: getChannel
+      tags: [channels]
+      summary: Get a channel by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+    put:
+      operationId: updateChannel
+      tags: [channels]
+      summary: Update a channel
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChannelBody"
+      responses:
+        "200":
+          description: Updated channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+    delete:
+      operationId: deleteChannel
+      tags: [channels]
+      summary: Delete a channel
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List SMS tasks
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sending, completed, failed]
+        - name: productId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated task list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create an SMS task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get a task by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Task with stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDetail"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  /records:
+    get:
+      operationId: listRecords
+      tags: [records]
+      summary: List message delivery records
+      parameters:
+        - name: taskId
+          in: query
+          schema:
+            type: integer
+        - name: sendResult
+          in: query
+          schema:
+            type: string
+            enum: [submitted, delivered, failed, report_failed, report_success, report_pending]
+        - name: productId
+          in: query
+          schema:
+            type: integer
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordListResponse"
+
+  /records/stats:
+    get:
+      operationId: getRecordStats
+      tags: [records]
+      summary: Get aggregated delivery statistics
+      responses:
+        "200":
+          description: Delivery stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordStats"
+
+  /billing:
+    get:
+      operationId: listBilling
+      tags: [billing]
+      summary: List billing records
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: integer
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated billing records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingListResponse"
+
+  /billing/summary:
+    get:
+      operationId: getBillingSummary
+      tags: [billing]
+      summary: Get billing summary
+      responses:
+        "200":
+          description: Billing summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingSummary"
+
 components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    RegisterBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required: [username, password, email]
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required: [token, user]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        balance:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, username, email, balance, createdAt]
+
+    DashboardSummary:
+      type: object
+      properties:
+        balance:
+          type: number
+        todaySent:
+          type: integer
+        monthSent:
+          type: integer
+        todayDelivered:
+          type: integer
+        todayFailed:
+          type: integer
+        successRate:
+          type: number
+        productBalances:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: integer
+              productName:
+                type: string
+              balance:
+                type: number
+            required: [productId, productName, balance]
+      required: [balance, todaySent, monthSent, todayDelivered, todayFailed, successRate, productBalances]
+
+    TrafficPoint:
+      type: object
+      properties:
+        day:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        count:
+          type: integer
+      required: [day, productId, productName, count]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        spid:
+          type: string
+        type:
+          type: string
+          enum: [OTP, Market, WS, International]
+        balance:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, spid, type, balance, createdAt]
+
+    CreateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        spid:
+          type: string
+        type:
+          type: string
+          enum: [OTP, Market, WS, International]
+        balance:
+          type: number
+      required: [name, spid, type]
+
+    Channel:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        protocol:
+          type: string
+          enum: [SMPP, HTTP]
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        maxBindings:
+          type: integer
+        channelType:
+          type: string
+          enum: [transmitter, receiver, transceiver]
+        status:
+          type: string
+          enum: [active, inactive, error]
+        productId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, protocol, host, port, username, maxBindings, channelType, status, productId, createdAt]
+
+    CreateChannelBody:
+      type: object
+      properties:
+        name:
+          type: string
+        protocol:
+          type: string
+          enum: [SMPP, HTTP]
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        maxBindings:
+          type: integer
+        channelType:
+          type: string
+          enum: [transmitter, receiver, transceiver]
+        productId:
+          type: integer
+      required: [name, protocol, host, port, username, password, maxBindings, channelType, productId]
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        productId:
+          type: integer
+        productName:
+          type: string
+        messageContent:
+          type: string
+        senderId:
+          type: string
+        status:
+          type: string
+          enum: [pending, sending, completed, failed]
+        totalRecipients:
+          type: integer
+        sentCount:
+          type: integer
+        deliveredCount:
+          type: integer
+        failedCount:
+          type: integer
+        cost:
+          type: number
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, productId, productName, messageContent, senderId, status, totalRecipients, sentCount, deliveredCount, failedCount, cost, createdAt]
+
+    TaskDetail:
+      allOf:
+        - $ref: "#/components/schemas/Task"
+        - type: object
+          properties:
+            successRate:
+              type: number
+            deliveryRate:
+              type: number
+          required: [successRate, deliveryRate]
+
+    TaskListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required: [data, total, page, pageSize]
+
+    CreateTaskBody:
+      type: object
+      properties:
+        name:
+          type: string
+        productId:
+          type: integer
+        messageContent:
+          type: string
+        senderId:
+          type: string
+        recipients:
+          type: array
+          items:
+            type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [name, productId, messageContent, senderId, recipients]
+
+    MessageRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        taskId:
+          type: integer
+        taskName:
+          type: string
+        productId:
+          type: integer
+        productName:
+          type: string
+        recipient:
+          type: string
+        sendResult:
+          type: string
+          enum: [submitted, delivered, failed, report_failed, report_success, report_pending]
+        failReason:
+          type: string
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveryLatency:
+          type: integer
+          nullable: true
+        cost:
+          type: number
+        messageId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, taskId, taskName, productId, productName, recipient, sendResult, cost, messageId, createdAt]
+
+    RecordListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageRecord"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required: [data, total, page, pageSize]
+
+    RecordStats:
+      type: object
+      properties:
+        totalSent:
+          type: integer
+        totalDelivered:
+          type: integer
+        totalFailed:
+          type: integer
+        deliveryRate:
+          type: number
+        totalCost:
+          type: number
+        avgLatencyMs:
+          type: integer
+      required: [totalSent, totalDelivered, totalFailed, deliveryRate, totalCost, avgLatencyMs]
+
+    BillingRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        taskId:
+          type: integer
+          nullable: true
+        taskName:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [sms, recharge]
+        amount:
+          type: number
+        messageCount:
+          type: integer
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, productId, productName, type, amount, messageCount, description, createdAt]
+
+    BillingListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingRecord"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required: [data, total, page, pageSize]
+
+    BillingSummary:
+      type: object
+      properties:
+        totalExpense:
+          type: number
+        totalMessages:
+          type: integer
+        totalSent:
+          type: integer
+        totalDelivered:
+          type: integer
+        totalFailed:
+          type: integer
+        deliveryRate:
+          type: number
+      required: [totalExpense, totalMessages, totalSent, totalDelivered, totalFailed, deliveryRate]

@@ -1,0 +1,160 @@
+import { ReactNode, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  LayoutDashboard,
+  Send,
+  MessageSquare,
+  Link2,
+  BarChart3,
+  DollarSign,
+  ChevronDown,
+  LogOut,
+  User,
+  Menu,
+  X,
+  Activity,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useListProducts } from "@workspace/api-client-react";
+
+const NAV_ITEMS = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "SMS Send", href: "/tasks", icon: Send },
+  { label: "SMS Records", href: "/records", icon: MessageSquare },
+  { label: "Channels", href: "/channels", icon: Link2 },
+  { label: "Statistics", href: "/stats", icon: BarChart3 },
+  { label: "Finance", href: "/billing", icon: DollarSign },
+];
+
+export default function Layout({ children }: { children: ReactNode }) {
+  const { user, logout } = useAuth();
+  const [location] = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { data: products } = useListProducts();
+  const [currentProductIdx, setCurrentProductIdx] = useState(0);
+  const currentProduct = products?.[currentProductIdx];
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col dark">
+      {/* Top Nav */}
+      <header className="h-12 bg-sidebar border-b border-sidebar-border flex items-center px-4 gap-4 shrink-0 z-50">
+        <div className="flex items-center gap-2 text-primary font-bold text-lg tracking-tight">
+          <Activity className="w-5 h-5" />
+          <span>SMS</span>
+        </div>
+
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 flex-1">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+            return (
+              <Link key={item.href} href={item.href}>
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-3 ml-auto">
+          {/* Product selector */}
+          {products && products.length > 0 && (
+            <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-2 py-1">
+              <span className="text-muted-foreground/60">Current:</span>
+              <select
+                className="bg-transparent text-foreground border-none outline-none text-xs cursor-pointer"
+                value={currentProductIdx}
+                onChange={(e) => setCurrentProductIdx(Number(e.target.value))}
+              >
+                {products.map((p, i) => (
+                  <option key={p.id} value={i} className="bg-card text-foreground">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* User menu */}
+          <div className="relative">
+            <button
+              className="flex items-center gap-2 text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+            >
+              <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <span className="hidden md:block">{user?.username}</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {userMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-popover-border rounded shadow-lg z-50">
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-xs font-medium text-foreground">{user?.username}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div>
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-xs text-muted-foreground">Balance</p>
+                  <p className="text-sm font-mono font-semibold text-primary">{user?.balance.toFixed(4)} USD</p>
+                </div>
+                <button
+                  onClick={() => { setUserMenuOpen(false); logout(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile menu toggle */}
+          <button className="md:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile nav */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 top-12 bg-sidebar z-40 p-4">
+          <nav className="flex flex-col gap-1">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+              return (
+                <Link key={item.href} href={item.href}>
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded text-sm font-medium cursor-pointer transition-colors",
+                      active ? "bg-primary/10 text-primary" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                    )}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
+
+      {/* Page content */}
+      <main className="flex-1 overflow-auto">{children}</main>
+    </div>
+  );
+}

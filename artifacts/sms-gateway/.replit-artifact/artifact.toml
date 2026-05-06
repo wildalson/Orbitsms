@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SMS Gateway"
+version = "1.0.0"
+id = "artifacts/sms-gateway"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22372
+
+[services.development]
+run = "pnpm --filter @workspace/sms-gateway run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sms-gateway", "run", "build" ]
+publicDir = "artifacts/sms-gateway/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22372"
+BASE_PATH = "/"

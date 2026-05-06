@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "dSrfS735c-y2KRgT90ohs"
+uri = "file://artifacts/sms-gateway/src/assets/login-bg.png"
+type = "image"
+title = "Satellite tech visual for login"
