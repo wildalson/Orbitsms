@@ -35,6 +35,13 @@ export default function LoginPage() {
           status: user.status ?? "active",
           smsRate: user.smsRate ?? 0.25,
           balance: user.balance,
+          emailVerified: user.emailVerified ?? false,
+          phoneVerified: user.phoneVerified ?? false,
+          smppHost: user.smppHost ?? null,
+          smppPort: user.smppPort ?? null,
+          smppSystemId: user.smppSystemId ?? null,
+          smppPassword: user.smppPassword ?? null,
+          httpApiKey: user.httpApiKey ?? null,
           createdAt: String(user.createdAt),
         });
         navigate(user.role === "admin" ? "/admin" : "/");
@@ -51,6 +58,13 @@ export default function LoginPage() {
           status: user.status ?? "active",
           smsRate: user.smsRate ?? 0.25,
           balance: user.balance,
+          emailVerified: user.emailVerified ?? false,
+          phoneVerified: user.phoneVerified ?? false,
+          smppHost: user.smppHost ?? null,
+          smppPort: user.smppPort ?? null,
+          smppSystemId: user.smppSystemId ?? null,
+          smppPassword: user.smppPassword ?? null,
+          httpApiKey: user.httpApiKey ?? null,
           createdAt: String(user.createdAt),
         });
         navigate("/");
@@ -118,7 +132,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="demo1"
+                placeholder="Enter your account number"
                 className="w-full bg-card border border-input rounded px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
                 required
               />
@@ -163,28 +177,20 @@ export default function LoginPage() {
               />
             </div>
 
-            {mode === "login" && (
-              <div className="text-right">
-                <button type="button" className="text-xs text-primary hover:text-primary/80 transition-colors">
-                  Forgot password?
-                </button>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Please wait..." : mode === "login" ? "Login account" : "Register"}
+              {loading ? "Please wait..." : mode === "login" ? "Login" : "Register"}
             </button>
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
             {mode === "login" ? (
-              <>Register a new account?{" "}
+              <>Don't have an account?{" "}
                 <button onClick={() => setMode("register")} className="text-primary hover:underline font-medium">
-                  Register an account
+                  Register
                 </button>
               </>
             ) : (
@@ -195,31 +201,6 @@ export default function LoginPage() {
               </>
             )}
           </p>
-
-          <div className="mt-6 p-3 rounded border border-border/50 bg-muted/20 space-y-1.5">
-            <p className="text-xs text-muted-foreground/70 font-semibold mb-1">Demo accounts — password: 123456</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-              {["demo1","demo2","demo3","demo4","demo5"].map(u => (
-                <button
-                  key={u}
-                  type="button"
-                  onClick={() => { setUsername(u); setPassword("123456"); }}
-                  className="text-left text-xs font-mono text-primary/80 hover:text-primary transition-colors"
-                >
-                  {u}
-                </button>
-              ))}
-            </div>
-            <div className="border-t border-border/40 pt-1.5 mt-1">
-              <button
-                type="button"
-                onClick={() => { setUsername("admin"); setPassword("admin123"); }}
-                className="text-xs font-mono text-red-400/80 hover:text-red-400 transition-colors"
-              >
-                admin (super admin)
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

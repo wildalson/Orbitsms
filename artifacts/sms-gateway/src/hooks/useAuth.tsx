@@ -11,6 +11,13 @@ interface AuthUser {
   status: "active" | "suspended";
   smsRate: number;
   balance: number;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  smppHost?: string | null;
+  smppPort?: string | null;
+  smppSystemId?: string | null;
+  smppPassword?: string | null;
+  httpApiKey?: string | null;
   createdAt: string;
 }
 
@@ -19,6 +26,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
+  updateUser: (user: AuthUser) => void;
   isLoading: boolean;
 }
 
@@ -39,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(stored);
     setAuthTokenGetter(() => stored);
 
-    // Always re-validate with server so role/status are always fresh
     fetch("/api/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
       .then(r => (r.ok ? r.json() : null))
       .then(fresh => {
@@ -47,7 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(fresh);
           localStorage.setItem("sms_user", JSON.stringify(fresh));
         } else {
-          // Token invalid — clear everything
           localStorage.removeItem("sms_token");
           localStorage.removeItem("sms_user");
           setToken(null);
@@ -55,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        // Network error — try to use cached user
         const storedUser = localStorage.getItem("sms_user");
         if (storedUser) {
           try { setUser(JSON.parse(storedUser)); } catch { /* ignore */ }
@@ -80,8 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthTokenGetter(null);
   }
 
+  function updateUser(newUser: AuthUser) {
+    setUser(newUser);
+    localStorage.setItem("sms_user", JSON.stringify(newUser));
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

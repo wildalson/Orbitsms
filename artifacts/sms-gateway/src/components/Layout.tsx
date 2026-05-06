@@ -15,12 +15,17 @@ import {
   X,
   Activity,
   ShieldCheck,
+  Layers,
+  Settings,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useListProducts } from "@workspace/api-client-react";
+import ProfileModal from "@/components/ProfileModal";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Workspace", href: "/workspaces", icon: Layers },
   { label: "SMS Send", href: "/tasks", icon: Send },
   { label: "SMS Records", href: "/records", icon: MessageSquare },
   { label: "Channels", href: "/channels", icon: Link2 },
@@ -33,8 +38,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { data: products } = useListProducts();
-  const [currentProductIdx, setCurrentProductIdx] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background flex flex-col dark">
@@ -69,23 +73,27 @@ export default function Layout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="flex items-center gap-3 ml-auto">
-          {/* Workspace selector */}
-          {products && products.length > 0 && (
-            <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-2 py-1">
-              <span className="text-muted-foreground/60">Workspace:</span>
-              <select
-                className="bg-transparent text-foreground border-none outline-none text-xs cursor-pointer"
-                value={currentProductIdx}
-                onChange={(e) => setCurrentProductIdx(Number(e.target.value))}
-              >
-                {products.map((p, i) => (
-                  <option key={p.id} value={i} className="bg-card text-foreground">
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Verification badges */}
+          <div className="hidden lg:flex items-center gap-1.5">
+            {user?.emailVerified ? (
+              <span className="flex items-center gap-1 text-xs text-green-400" title="Email verified">
+                <CheckCircle className="w-3 h-3" />
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-amber-400/60" title="Email not verified">
+                <AlertCircle className="w-3 h-3" />
+              </span>
+            )}
+            {user?.phone && (user?.phoneVerified ? (
+              <span className="flex items-center gap-1 text-xs text-green-400" title="Phone verified">
+                <CheckCircle className="w-3 h-3" />
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-amber-400/60" title="Phone not verified">
+                <AlertCircle className="w-3 h-3" />
+              </span>
+            ))}
+          </div>
 
           {/* User menu */}
           <div className="relative">
@@ -100,15 +108,34 @@ export default function Layout({ children }: { children: ReactNode }) {
               <ChevronDown className="w-3 h-3" />
             </button>
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-popover-border rounded shadow-lg z-50">
+              <div className="absolute right-0 top-full mt-1 w-56 bg-popover border border-popover-border rounded shadow-lg z-50">
                 <div className="px-3 py-2 border-b border-border">
                   <p className="text-xs font-medium text-foreground">{user?.username}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <div className="flex gap-2 mt-1">
+                    {user?.emailVerified ? (
+                      <span className="text-xs text-green-400 flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5" /> Email</span>
+                    ) : (
+                      <span className="text-xs text-amber-400 flex items-center gap-0.5"><AlertCircle className="w-2.5 h-2.5" /> Email</span>
+                    )}
+                    {user?.phone && (user?.phoneVerified ? (
+                      <span className="text-xs text-green-400 flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5" /> Mobile</span>
+                    ) : (
+                      <span className="text-xs text-amber-400 flex items-center gap-0.5"><AlertCircle className="w-2.5 h-2.5" /> Mobile</span>
+                    ))}
+                  </div>
                 </div>
                 <div className="px-3 py-2 border-b border-border">
                   <p className="text-xs text-muted-foreground">Balance (PHP)</p>
                   <p className="text-sm font-mono font-semibold text-primary">₱{(user?.balance ?? 0).toFixed(2)}</p>
                 </div>
+                <button
+                  onClick={() => { setUserMenuOpen(false); setProfileOpen(true); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted/40 transition-colors border-b border-border"
+                >
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                  Account Settings
+                </button>
                 {user?.role === "admin" && (
                   <Link href="/admin">
                     <span className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer border-b border-border">
@@ -171,6 +198,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Page content */}
       <main className="flex-1 overflow-auto">{children}</main>
+
+      {/* Profile modal */}
+      {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
     </div>
   );
 }

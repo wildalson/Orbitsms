@@ -90,19 +90,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-foreground">
-              Welcome back, {user?.username}
+              Welcome back, {user?.companyName || user?.username}
             </h2>
             <div className="flex flex-wrap gap-4 mt-1 text-xs text-muted-foreground">
               <span>Balance: <span className="text-primary font-mono font-semibold">₱{balance.toFixed(2)}</span></span>
-              {user?.phone && <span>Phone: {user.phone}</span>}
-              {user?.email && <span>Email: {user.email}</span>}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {["Email", "Phone", "Personal", "Enterprise"].map((label) => (
-                <span key={label} className="text-xs px-2 py-0.5 rounded bg-green-500/10 border border-green-500/20 text-green-400">
-                  {label}: Verified
-                </span>
-              ))}
+              {user?.phone && <span className="font-mono">{user.phone}</span>}
+              {user?.email && <span>{user.email}</span>}
             </div>
           </div>
         </div>

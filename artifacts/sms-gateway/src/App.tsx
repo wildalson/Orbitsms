@@ -14,10 +14,12 @@ import RecordsPage from "@/pages/records";
 import ChannelsPage from "@/pages/channels";
 import BillingPage from "@/pages/billing";
 import StatsPage from "@/pages/stats";
+import WorkspacesPage from "@/pages/workspaces";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin/admin-dashboard";
 import AdminClients from "@/pages/admin/admin-clients";
 import AdminClientDetail from "@/pages/admin/admin-client-detail";
+import AdminChannels from "@/pages/admin/admin-channels";
 import AdminLogs from "@/pages/admin/admin-logs";
 import AdminSettings from "@/pages/admin/admin-settings";
 
@@ -76,10 +78,12 @@ function Router() {
       <Route path="/admin" component={() => <AdminRoute component={AdminDashboard} />} />
       <Route path="/admin/clients" component={() => <AdminRoute component={AdminClients} />} />
       <Route path="/admin/clients/:id" component={() => <AdminRoute component={AdminClientDetail} />} />
+      <Route path="/admin/channels" component={() => <AdminRoute component={AdminChannels} />} />
       <Route path="/admin/logs" component={() => <AdminRoute component={AdminLogs} />} />
       <Route path="/admin/settings" component={() => <AdminRoute component={AdminSettings} />} />
       {/* Client routes */}
       <Route path="/" component={() => <ProtectedRoute component={DashboardPage} />} />
+      <Route path="/workspaces" component={() => <ProtectedRoute component={WorkspacesPage} />} />
       <Route path="/tasks/new" component={() => <ProtectedRoute component={CreateTaskPage} />} />
       <Route path="/tasks/:id" component={() => <ProtectedRoute component={TaskDetailPage} />} />
       <Route path="/tasks" component={() => <ProtectedRoute component={TasksPage} />} />

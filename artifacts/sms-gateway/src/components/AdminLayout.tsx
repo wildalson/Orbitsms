@@ -11,12 +11,14 @@ import {
   Menu,
   X,
   ShieldCheck,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Clients", href: "/admin/clients", icon: Users },
+  { label: "Channels", href: "/admin/channels", icon: Link2 },
   { label: "SMS Logs", href: "/admin/logs", icon: MessageSquare },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
@@ -94,7 +96,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 md:ml-56 flex flex-col">
-        {/* Mobile header */}
         <header className="h-12 bg-sidebar border-b border-sidebar-border flex items-center px-4 gap-3 md:hidden shrink-0">
           <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

@@ -32,13 +32,16 @@ Demo credentials:
 - `lib/api-client-react/src/generated/` — generated React Query hooks and types (do not edit)
 - `lib/api-zod/src/generated/` — generated Zod schemas (do not edit)
 - `lib/db/src/schema/` — Drizzle schema: users, products, channels, tasks, message_records, billing_records
-- `artifacts/api-server/src/routes/` — all Express route handlers (admin.ts for admin endpoints)
+- `artifacts/api-server/src/routes/` — all Express route handlers
+  - `auth.ts` — login, register, /auth/me, plus profile CRUD + OTP verification
+  - `admin.ts` — admin endpoints including admin channels CRUD
 - `artifacts/sms-gateway/src/` — React frontend
-  - `pages/` — login, dashboard, tasks, create-task, task-detail, records, channels, billing, stats
-  - `pages/admin/` — admin-dashboard, admin-clients, admin-client-detail, admin-logs, admin-settings
-  - `components/Layout.tsx` — client top nav with workspace selector and ₱ balance display
-  - `components/AdminLayout.tsx` — admin sidebar layout
-  - `hooks/useAuth.tsx` — auth context with role (admin/client), localStorage token
+  - `pages/` — login, dashboard, tasks, create-task, task-detail, records, channels, billing, stats, workspaces
+  - `pages/admin/` — admin-dashboard, admin-clients, admin-client-detail, admin-channels, admin-logs, admin-settings
+  - `components/Layout.tsx` — client top nav with Workspace nav item, profile modal trigger, verification badges
+  - `components/AdminLayout.tsx` — admin sidebar layout (Channels nav item added)
+  - `components/ProfileModal.tsx` — 5-tab profile modal (Profile/Email/Mobile/Security/Connection)
+  - `hooks/useAuth.tsx` — auth context with role (admin/client), localStorage token, updateUser()
 
 ## Architecture decisions
 
@@ -47,24 +50,34 @@ Demo credentials:
 - React Query hooks take `(params, options)` — params first, options second.
 - Admin routes at `/api/admin/*` are guarded by inline `requireAdmin()` that decodes Bearer token and checks `user.role === "admin"`.
 - Admin frontend routes at `/admin/*` use `AdminRoute` component that checks `user.role === "admin"`.
-- The codegen script patches `lib/api-zod/src/index.ts` after orval to fix duplicate export conflict.
+- Profile routes at `/api/profile`, `/api/profile/send-otp`, `/api/profile/verify-otp` (in auth.ts router).
+- OTP stored in-memory Map keyed `userId:type`, 10-min expiry. `devOtp` returned in API response for demo mode.
 - App defaults to dark mode via `.dark` class on root container in Layout.tsx and AdminLayout.tsx.
+- Channels table `productId` is now nullable — admin-created channels have no workspace assignment.
 
 ## Product
 
 - Login/Register with demo seeded data; role-based redirect (admin → /admin, client → /)
-- Dashboard with stats cards and traffic line chart per workspace (formerly "product")
-- SMS Tasks: list, create, view detail with per-recipient delivery records
+- Dashboard with stats cards and traffic line chart per workspace (no fake verified badges)
+- Workspace page: create/view/delete workspaces (SPID-based)
+- SMS Tasks: list with "All Workspaces" filter, create, view detail with per-recipient delivery records
 - SMS Records: filterable delivery history with Sender ID + SMS Content columns, real CSV export
-- Channels: SMPP/HTTP channel management (CRUD modal), channelType defaults to "transmitter"
+- Channels: clients see read-only list; admin manages via admin panel (no operator/workspace in form)
 - Billing: expense history with ₱ PHP balance display and CSV export
+- **Profile Settings Modal** (accessible from user menu → Account Settings):
+  - Profile tab: change display/company name
+  - Email tab: change email, verify via OTP (devOtp shown in response for demo)
+  - Mobile tab: PH number only (63XXXXXXXXXX), change + verify via OTP
+  - Security tab: change password (current + new + confirm)
+  - Connection tab: read-only SMPP/HTTP credentials set by admin
 - **Admin Panel** (Super Admin only at `/admin`):
-  - Dashboard: system-wide stats (clients, revenue, delivery rate)
-  - Client Management: create, edit, suspend, delete client accounts
-  - Balance Adjustment: add or deduct ₱ balance per client with reference notes
-  - Permission Settings: per-client toggles (Send SMS, Bulk SMS, Sender ID, Export, etc.)
-  - SMS Logs: all delivery records across all clients with CSV export
-  - System Settings: currency, default SMS rate, charging logic, provider API config
+  - Dashboard: system-wide stats
+  - Client Management: create, edit, suspend, delete + SMPP/HTTP connection config per client
+  - Balance Adjustment: add or deduct ₱ balance per client
+  - Permission Settings: per-client toggles
+  - Channels: full CRUD (no operator/workspace field) — admin-managed shared infrastructure
+  - SMS Logs: all delivery records with CSV export
+  - System Settings: currency, default SMS rate, etc.
 
 ## User preferences
 
@@ -74,6 +87,7 @@ Demo credentials:
 - Currency: PHP (₱) throughout all balance displays
 - "Product" renamed to "Workspace" everywhere in UI
 - Channel type defaults to "transmitter"
+- Demo account section removed from login page (production-ready)
 
 ## Gotchas
 
@@ -82,6 +96,9 @@ Demo credentials:
 - After codegen, index.ts is overwritten by the patch step — do not manually edit generated files
 - Channels and records use `useListChannels(options?)` (no params) vs `useListRecords(params?, options?)`
 - Admin pages use direct `fetch()` calls (not React Query hooks) since admin routes are not in the OpenAPI spec
+- Profile routes are in `auth.ts` router (not a separate file) — registered under `/api/profile`
+- OTP is returned as `devOtp` in API response for demo mode (production: wire up email/SMS service)
+- SMPP connection fields per-client (smppHost, smppPort, smppSystemId, smppPassword, httpApiKey) are stored in users table and shown in admin client detail + client profile Connection tab
 
 ## Pointers
 

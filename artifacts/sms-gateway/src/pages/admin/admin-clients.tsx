@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, Edit2, Trash2, DollarSign, Eye, X } from "lucide-react";
+import { Plus, Search, Trash2, DollarSign, Eye, X, ChevronDown, ChevronUp } from "lucide-react";
 
 const DEFAULT_PERMS = { sendSms: true, sendBulkSms: true, uploadContacts: false, viewDeliveryReports: true, accessApiCredentials: false, useSenderId: true, exportReports: true };
 
 interface ClientForm {
   username: string; email: string; password: string; phone: string;
   companyName: string; smsRate: number; balance: number; permissions: typeof DEFAULT_PERMS;
+  smppHost: string; smppPort: string; smppSystemId: string; smppPassword: string; httpApiKey: string;
 }
 
 const EMPTY_FORM: ClientForm = {
   username: "", email: "", password: "", phone: "", companyName: "",
   smsRate: 0.25, balance: 0, permissions: { ...DEFAULT_PERMS },
+  smppHost: "", smppPort: "2775", smppSystemId: "", smppPassword: "", httpApiKey: "",
 };
 
 export default function AdminClients() {
@@ -24,6 +26,7 @@ export default function AdminClients() {
   const [form, setForm] = useState<ClientForm>(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showConn, setShowConn] = useState(false);
   const [balanceModal, setBalanceModal] = useState<{ id: number; username: string; balance: number } | null>(null);
   const [balanceAmount, setBalanceAmount] = useState("");
   const [balanceNote, setBalanceNote] = useState("");
@@ -73,8 +76,7 @@ export default function AdminClients() {
     });
     setBalanceSaving(false);
     setBalanceModal(null);
-    setBalanceAmount("");
-    setBalanceNote("");
+    setBalanceAmount(""); setBalanceNote("");
     loadClients();
   }
 
@@ -97,24 +99,20 @@ export default function AdminClients() {
           <h1 className="text-lg font-bold text-foreground">Client Management</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{clients.length} registered client accounts</p>
         </div>
-        <button onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setFormError(""); }}
+        <button onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setFormError(""); setShowConn(false); }}
           className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded hover:bg-primary/90 transition-colors">
           <Plus className="w-3.5 h-3.5" />
           New Client
         </button>
       </div>
 
-      {/* Search */}
       <div className="relative w-72">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
+        <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search by username, company, email..."
-          className="w-full pl-9 pr-3 py-1.5 bg-card border border-border rounded text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
-        />
+          className="w-full pl-9 pr-3 py-1.5 bg-card border border-border rounded text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50" />
       </div>
 
-      {/* Table */}
       <div className="bg-card border border-card-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -166,16 +164,12 @@ export default function AdminClients() {
                             <Eye className="w-3.5 h-3.5" />
                           </span>
                         </Link>
-                        <button
-                          onClick={() => { setBalanceModal({ id: c.id, username: c.username, balance: c.balance }); setBalanceAmount(""); setBalanceNote(""); }}
-                          className="p-1.5 rounded hover:bg-amber-500/10 text-muted-foreground hover:text-amber-400 transition-colors" title="Adjust balance"
-                        >
+                        <button onClick={() => { setBalanceModal({ id: c.id, username: c.username, balance: c.balance }); setBalanceAmount(""); setBalanceNote(""); }}
+                          className="p-1.5 rounded hover:bg-amber-500/10 text-muted-foreground hover:text-amber-400 transition-colors" title="Adjust balance">
                           <DollarSign className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(c.id, c.username)}
-                          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Delete"
-                        >
+                        <button onClick={() => handleDelete(c.id, c.username)}
+                          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Delete">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -196,40 +190,75 @@ export default function AdminClients() {
               <h2 className="text-sm font-semibold text-foreground">Create Client Account</h2>
               <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
             </div>
-            <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               {formError && <div className="px-3 py-2 rounded bg-destructive/10 border border-destructive/30 text-destructive text-xs">{formError}</div>}
 
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Username *", key: "username", type: "text" },
-                  { label: "Email *", key: "email", type: "email" },
-                  { label: "Password *", key: "password", type: "password" },
-                  { label: "Phone", key: "phone", type: "text" },
-                  { label: "Company Name", key: "companyName", type: "text" },
-                ].map(({ label, key, type }) => (
-                  <div key={key} className={key === "companyName" ? "col-span-2" : ""}>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
-                    <input type={type} value={(form as any)[key]}
-                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+              {/* Account info */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Account Information</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Username *", key: "username", type: "text" },
+                    { label: "Email *", key: "email", type: "email" },
+                    { label: "Password *", key: "password", type: "password" },
+                    { label: "Phone", key: "phone", type: "text" },
+                    { label: "Company Name", key: "companyName", type: "text" },
+                  ].map(({ label, key, type }) => (
+                    <div key={key} className={key === "companyName" ? "col-span-2" : ""}>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+                      <input type={type} value={(form as any)[key]}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                        className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">SMS Rate (₱/msg)</label>
+                    <input type="number" step="0.01" value={form.smsRate}
+                      onChange={e => setForm(f => ({ ...f, smsRate: parseFloat(e.target.value) || 0 }))}
                       className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
                   </div>
-                ))}
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">SMS Rate (₱/msg)</label>
-                  <input type="number" step="0.01" value={form.smsRate}
-                    onChange={e => setForm(f => ({ ...f, smsRate: parseFloat(e.target.value) || 0 }))}
-                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Initial Balance (₱)</label>
-                  <input type="number" step="1" value={form.balance}
-                    onChange={e => setForm(f => ({ ...f, balance: parseFloat(e.target.value) || 0 }))}
-                    className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Initial Balance (₱)</label>
+                    <input type="number" step="1" value={form.balance}
+                      onChange={e => setForm(f => ({ ...f, balance: parseFloat(e.target.value) || 0 }))}
+                      className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+                  </div>
                 </div>
               </div>
 
+              {/* SMPP Connection config */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Permissions</p>
+                <button
+                  type="button"
+                  onClick={() => setShowConn(v => !v)}
+                  className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+                >
+                  {showConn ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  Connection Settings (SMPP / HTTP)
+                </button>
+                {showConn && (
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    {[
+                      { label: "SMPP Host / IP", key: "smppHost", type: "text", placeholder: "192.168.1.100" },
+                      { label: "SMPP Port", key: "smppPort", type: "text", placeholder: "2775" },
+                      { label: "SMPP System ID", key: "smppSystemId", type: "text", placeholder: "client_id" },
+                      { label: "SMPP Password", key: "smppPassword", type: "password", placeholder: "••••••••" },
+                      { label: "HTTP API Key", key: "httpApiKey", type: "text", placeholder: "sk_live_..." },
+                    ].map(({ label, key, type, placeholder }) => (
+                      <div key={key} className={key === "httpApiKey" ? "col-span-2" : ""}>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+                        <input type={type} value={(form as any)[key]} placeholder={placeholder}
+                          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                          className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Permissions */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Permissions</p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {Object.entries(PERM_LABELS).map(([key, label]) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -265,9 +294,7 @@ export default function AdminClients() {
               <p className="text-xs text-muted-foreground">Client: <span className="text-foreground font-medium">{balanceModal.username}</span></p>
               <p className="text-xs text-muted-foreground">Current balance: <span className="text-primary font-mono">₱{balanceModal.balance.toFixed(2)}</span></p>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  Amount (₱) — positive to add, negative to deduct
-                </label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Amount (₱) — positive to add, negative to deduct</label>
                 <input type="number" step="0.01" value={balanceAmount}
                   onChange={e => setBalanceAmount(e.target.value)}
                   placeholder="e.g. 500 or -100"

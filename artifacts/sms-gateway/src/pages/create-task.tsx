@@ -36,7 +36,6 @@ export default function CreateTaskPage() {
   const smsCount = Math.ceil(charCount / MAX_SMS_CHARS) || 1;
   const selectedProduct = products?.find((p) => p.id === productId);
 
-  // Operator breakdown for PH numbers
   const operatorBreakdown = recipients.reduce<Record<string, number>>((acc, num) => {
     const op = detectOperator(num);
     const label = op ? op.routeVia : "Unknown";
@@ -82,8 +81,8 @@ export default function CreateTaskPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3 space-y-5">
             {error && (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded bg-destructive/10 border border-destructive/30 text-destructive text-sm">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -134,7 +133,7 @@ export default function CreateTaskPage() {
                     maxLength={11}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                   />
-                  <p className="text-xs text-muted-foreground/60 mt-1">Max 11 characters. Used as the displayed sender name on the recipient's phone.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Max 11 characters. Displayed as sender name on recipient's phone.</p>
                 </div>
               </div>
             </div>
@@ -168,8 +167,8 @@ export default function CreateTaskPage() {
               <textarea
                 value={recipientText}
                 onChange={(e) => setRecipientText(e.target.value)}
-                placeholder={"One number per line or comma-separated:\n09171234567\n09281234567,09951234567\n+639171234567"}
-                rows={5}
+                placeholder={"Multiple numbers can be inputted by separating them with a comma:\n63999999999,6399999911,63917123456\n\nOr one per line:\n09171234567\n09281234567"}
+                rows={6}
                 className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 font-mono resize-y"
               />
               <div className="mt-2 flex items-center justify-between">
@@ -178,7 +177,6 @@ export default function CreateTaskPage() {
                 </p>
               </div>
 
-              {/* PH Operator breakdown */}
               {recipients.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border/50">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Operator Detection</p>
@@ -191,7 +189,7 @@ export default function CreateTaskPage() {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground/50 mt-1.5">
-                    Globe → MCC/MNC 51502 · Smart → 51503 · DITO → 51566
+                    Globe → 51502 · Smart → 51503 · DITO → 51566
                   </p>
                 </div>
               )}
@@ -199,24 +197,20 @@ export default function CreateTaskPage() {
 
             <div className="bg-card border border-card-border rounded-lg p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">SMS Content</h2>
-              <div className="mb-2">
-                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  SMS Message <span className="text-destructive">*</span>
-                </label>
-              </div>
-              <div className="relative">
-                <textarea
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder="Enter your SMS message..."
-                  rows={5}
-                  className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 resize-y"
-                />
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className={`text-xs ${charCount > MAX_SMS_CHARS ? "text-amber-400" : "text-muted-foreground"}`}>
-                    {charCount}/{MAX_SMS_CHARS} chars — {smsCount} SMS
-                  </span>
-                </div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                SMS Message <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                placeholder="Enter your SMS message..."
+                rows={5}
+                className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 resize-y"
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                <span className={`text-xs ${charCount > MAX_SMS_CHARS ? "text-amber-400" : "text-muted-foreground"}`}>
+                  {charCount}/{MAX_SMS_CHARS} chars — {smsCount} SMS
+                </span>
               </div>
             </div>
 
@@ -230,10 +224,11 @@ export default function CreateTaskPage() {
             </button>
           </div>
 
-          <div className="space-y-4">
+          {/* Right panel */}
+          <div className="lg:col-span-2 space-y-4">
             <div className="bg-card border border-card-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-foreground">Configuration Summary</h3>
+                <h3 className="text-xs font-semibold text-foreground">Summary</h3>
                 <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">PH Only</span>
               </div>
               <div className="space-y-2 text-xs">
@@ -271,27 +266,39 @@ export default function CreateTaskPage() {
               )}
             </div>
 
+            {/* Phone preview — standard mobile size */}
             <div className="flex flex-col items-center">
-              <div className="w-52 bg-[#1a1a2e] rounded-3xl border-4 border-[#252545] shadow-xl overflow-hidden">
-                <div className="bg-[#252545] py-2 text-center">
-                  <div className="text-xs text-gray-400">
+              <div className="w-72 bg-[#1a1a2e] rounded-3xl border-4 border-[#252545] shadow-xl overflow-hidden">
+                {/* Status bar */}
+                <div className="bg-[#252545] px-4 py-2 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">
                     {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </span>
+                  <div className="flex gap-1">
+                    <div className="w-3 h-1.5 bg-gray-500 rounded-sm" />
+                    <div className="w-3 h-1.5 bg-gray-500 rounded-sm" />
+                    <div className="w-3 h-1.5 bg-gray-500 rounded-sm" />
                   </div>
                 </div>
-                <div className="p-3">
-                  <div className="flex flex-col items-center mb-3">
-                    <div className="w-8 h-8 rounded-full bg-[#252545] flex items-center justify-center mb-1">
-                      <Smartphone className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <p className="text-xs text-gray-400">{senderId || "OrbitSMS"}</p>
-                    <p className="text-[10px] text-gray-600">
-                      {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}
-                    </p>
+                {/* Conversation header */}
+                <div className="bg-[#1e1e38] px-4 py-3 flex items-center gap-3 border-b border-[#252545]">
+                  <div className="w-9 h-9 rounded-full bg-[#252545] flex items-center justify-center">
+                    <Smartphone className="w-4 h-4 text-gray-400" />
                   </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{senderId || "OrbitSMS"}</p>
+                    <p className="text-xs text-gray-500">SMS</p>
+                  </div>
+                </div>
+                {/* Message bubble */}
+                <div className="p-4 min-h-[140px]">
                   <div className="flex justify-end">
-                    <div className="bg-primary rounded-2xl rounded-tr-sm px-3 py-2 max-w-[85%]">
-                      <p className="text-xs text-primary-foreground break-words whitespace-pre-wrap">
+                    <div className="bg-primary rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%]">
+                      <p className="text-sm text-primary-foreground break-words whitespace-pre-wrap leading-relaxed">
                         {messageContent || "Your message preview will appear here..."}
+                      </p>
+                      <p className="text-xs text-primary-foreground/60 mt-1.5 text-right">
+                        {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}
                       </p>
                     </div>
                   </div>

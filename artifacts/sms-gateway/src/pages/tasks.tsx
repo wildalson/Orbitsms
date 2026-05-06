@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useListTasks, useDeleteTask, useListProducts } from "@workspace/api-client-react";
-import { Plus, Trash2, Eye, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListTasksQueryKey } from "@workspace/api-client-react";
 
@@ -67,7 +67,7 @@ export default function TasksPage() {
           onChange={(e) => { setProductFilter(e.target.value ? Number(e.target.value) : undefined); setPage(1); }}
           className="bg-card border border-border rounded px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary/50"
         >
-          <option value="">All Products</option>
+          <option value="">All Workspaces</option>
           {products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
@@ -80,13 +80,13 @@ export default function TasksPage() {
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">ID</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Task Name</th>
-                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Product</th>
+                <th className="text-left px-4 py-3 text-muted-foreground font-medium">Workspace</th>
                 <th className="text-left px-4 py-3 text-muted-foreground font-medium">Status</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Total</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Sent</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Delivered</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Failed</th>
-                <th className="text-right px-4 py-3 text-muted-foreground font-medium">Cost (USD)</th>
+                <th className="text-right px-4 py-3 text-muted-foreground font-medium">Cost (₱)</th>
                 <th className="text-right px-4 py-3 text-muted-foreground font-medium">Created</th>
                 <th className="text-center px-4 py-3 text-muted-foreground font-medium">Actions</th>
               </tr>
@@ -107,56 +107,50 @@ export default function TasksPage() {
                   </td>
                 </tr>
               ) : (
-                data?.data.map((task) => {
-                  const successRate = task.sentCount > 0
-                    ? Math.round((task.deliveredCount / task.sentCount) * 1000) / 10
-                    : 0;
-                  return (
-                    <tr key={task.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3 font-mono text-muted-foreground">{task.id}</td>
-                      <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">{task.name}</td>
-                      <td className="px-4 py-3">
-                        <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                          {task.productName}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-1.5 py-0.5 rounded border capitalize ${STATUS_STYLES[task.status]}`}>
-                          {task.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono">{task.totalRecipients.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono text-blue-400">{task.sentCount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono text-green-400">{task.deliveredCount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono text-destructive">{task.failedCount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono">{task.cost.toFixed(6)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {new Date(task.createdAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <Link href={`/tasks/${task.id}`}>
-                            <span className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors cursor-pointer inline-block">
-                              <Eye className="w-3.5 h-3.5" />
-                            </span>
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(task.id)}
-                            className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                data?.data.map((task) => (
+                  <tr key={task.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3 font-mono text-muted-foreground">{task.id}</td>
+                    <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">{task.name}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        {task.productName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-1.5 py-0.5 rounded border capitalize ${STATUS_STYLES[task.status]}`}>
+                        {task.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono">{task.totalRecipients.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono text-blue-400">{task.sentCount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono text-green-400">{task.deliveredCount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono text-destructive">{task.failedCount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono">₱{task.cost.toFixed(4)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">
+                      {new Date(task.createdAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <Link href={`/tasks/${task.id}`}>
+                          <span className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors cursor-pointer inline-block">
+                            <Eye className="w-3.5 h-3.5" />
+                          </span>
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(task.id)}
+                          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
         {data && data.total > pageSize && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <span className="text-xs text-muted-foreground">

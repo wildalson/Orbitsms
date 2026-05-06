@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, messageRecordsTable, tasksTable, productsTable, billingRecordsTable } from "@workspace/db";
+import { db, usersTable, messageRecordsTable, tasksTable, productsTable, billingRecordsTable, channelsTable } from "@workspace/db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 
@@ -29,6 +29,17 @@ async function requireAdmin(req: any, res: any): Promise<number | null> {
     res.status(401).json({ error: "Invalid token" });
     return null;
   }
+}
+
+function formatClient(c: any) {
+  return {
+    ...c,
+    smsRate: Number(c.smsRate),
+    balance: Number(c.balance),
+    emailVerified: c.emailVerified ?? false,
+    phoneVerified: c.phoneVerified ?? false,
+    permissions: (() => { try { return JSON.parse(c.permissions); } catch { return {}; } })(),
+  };
 }
 
 router.get("/admin/stats", async (req, res) => {
@@ -72,22 +83,25 @@ router.get("/admin/clients", async (req, res) => {
     smsRate: usersTable.smsRate,
     balance: usersTable.balance,
     permissions: usersTable.permissions,
+    emailVerified: usersTable.emailVerified,
+    phoneVerified: usersTable.phoneVerified,
+    smppHost: usersTable.smppHost,
+    smppPort: usersTable.smppPort,
+    smppSystemId: usersTable.smppSystemId,
+    smppPassword: usersTable.smppPassword,
+    httpApiKey: usersTable.httpApiKey,
     createdAt: usersTable.createdAt,
   }).from(usersTable).where(eq(usersTable.role, "client")).orderBy(desc(usersTable.createdAt));
 
-  res.json(clients.map(c => ({
-    ...c,
-    smsRate: Number(c.smsRate),
-    balance: Number(c.balance),
-    permissions: (() => { try { return JSON.parse(c.permissions); } catch { return {}; } })(),
-  })));
+  res.json(clients.map(formatClient));
 });
 
 router.post("/admin/clients", async (req, res) => {
   const adminId = await requireAdmin(req, res);
   if (!adminId) return;
 
-  const { username, email, password, phone, companyName, smsRate, balance, permissions } = req.body;
+  const { username, email, password, phone, companyName, smsRate, balance, permissions,
+    smppHost, smppPort, smppSystemId, smppPassword, httpApiKey } = req.body;
   if (!username || !email || !password) {
     res.status(400).json({ error: "username, email, password are required" });
     return;
@@ -105,21 +119,21 @@ router.post("/admin/clients", async (req, res) => {
     username,
     email,
     password: hashPassword(password),
-    phone: phone ?? null,
-    companyName: companyName ?? null,
+    phone: phone || null,
+    companyName: companyName || null,
     role: "client",
     status: "active",
     smsRate: String(smsRate ?? 0.25),
     balance: String(balance ?? 0),
     permissions: JSON.stringify(permissions ?? defaultPerms),
+    smppHost: smppHost || null,
+    smppPort: smppPort || null,
+    smppSystemId: smppSystemId || null,
+    smppPassword: smppPassword || null,
+    httpApiKey: httpApiKey || null,
   }).returning();
 
-  res.status(201).json({
-    ...user,
-    smsRate: Number(user.smsRate),
-    balance: Number(user.balance),
-    permissions: JSON.parse(user.permissions),
-  });
+  res.status(201).json(formatClient(user));
 });
 
 router.get("/admin/clients/:id", async (req, res) => {
@@ -134,17 +148,34 @@ router.get("/admin/clients/:id", async (req, res) => {
     .orderBy(desc(billingRecordsTable.createdAt))
     .limit(20);
 
+  const records = await db.select({
+    record: messageRecordsTable,
+    senderId: tasksTable.senderId,
+    messageContent: tasksTable.messageContent,
+  })
+    .from(messageRecordsTable)
+    .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
+    .where(eq(messageRecordsTable.productId, id))
+    .orderBy(desc(messageRecordsTable.createdAt))
+    .limit(20);
+
   res.json({
-    ...user,
-    smsRate: Number(user.smsRate),
-    balance: Number(user.balance),
-    permissions: (() => { try { return JSON.parse(user.permissions); } catch { return {}; } })(),
+    ...formatClient(user),
     billing: billingHistory.map(b => ({
       id: b.id,
       type: b.type,
       amount: Number(b.amount),
       description: b.description,
       createdAt: b.createdAt,
+    })),
+    records: records.map(r => ({
+      id: r.record.id,
+      recipient: r.record.recipient,
+      senderId: r.senderId || "",
+      messageContent: r.messageContent || "",
+      sendResult: r.record.sendResult,
+      cost: Number(r.record.cost),
+      createdAt: r.record.createdAt,
     })),
   });
 });
@@ -154,27 +185,28 @@ router.put("/admin/clients/:id", async (req, res) => {
   if (!adminId) return;
 
   const id = parseInt(req.params.id);
-  const { username, email, phone, companyName, smsRate, status, permissions, password } = req.body;
+  const { username, email, phone, companyName, smsRate, status, permissions, password,
+    smppHost, smppPort, smppSystemId, smppPassword, httpApiKey } = req.body;
 
   const updates: Record<string, any> = {};
   if (username !== undefined) updates.username = username;
   if (email !== undefined) updates.email = email;
-  if (phone !== undefined) updates.phone = phone;
-  if (companyName !== undefined) updates.companyName = companyName;
+  if (phone !== undefined) updates.phone = phone || null;
+  if (companyName !== undefined) updates.companyName = companyName || null;
   if (smsRate !== undefined) updates.smsRate = String(smsRate);
   if (status !== undefined) updates.status = status;
   if (permissions !== undefined) updates.permissions = JSON.stringify(permissions);
   if (password) updates.password = hashPassword(password);
+  if (smppHost !== undefined) updates.smppHost = smppHost || null;
+  if (smppPort !== undefined) updates.smppPort = smppPort || null;
+  if (smppSystemId !== undefined) updates.smppSystemId = smppSystemId || null;
+  if (smppPassword !== undefined) updates.smppPassword = smppPassword || null;
+  if (httpApiKey !== undefined) updates.httpApiKey = httpApiKey || null;
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Client not found" }); return; }
 
-  res.json({
-    ...updated,
-    smsRate: Number(updated.smsRate),
-    balance: Number(updated.balance),
-    permissions: (() => { try { return JSON.parse(updated.permissions); } catch { return {}; } })(),
-  });
+  res.json(formatClient(updated));
 });
 
 router.delete("/admin/clients/:id", async (req, res) => {
@@ -212,6 +244,72 @@ router.post("/admin/clients/:id/balance", async (req, res) => {
   }
 
   res.json({ balance: Number(updated.balance) });
+});
+
+// Admin channels CRUD
+router.get("/admin/channels", async (req, res) => {
+  const adminId = await requireAdmin(req, res);
+  if (!adminId) return;
+  const channels = await db.select().from(channelsTable).orderBy(desc(channelsTable.createdAt));
+  res.json(channels);
+});
+
+router.post("/admin/channels", async (req, res) => {
+  const adminId = await requireAdmin(req, res);
+  if (!adminId) return;
+
+  const { name, protocol, host, port, username, password, maxBindings, channelType } = req.body;
+  if (!name || !host || !port || !username || !password) {
+    res.status(400).json({ error: "name, host, port, username, password are required" });
+    return;
+  }
+
+  const [channel] = await db.insert(channelsTable).values({
+    name,
+    protocol: protocol ?? "SMPP",
+    host,
+    port: Number(port),
+    username,
+    password,
+    maxBindings: Number(maxBindings ?? 5),
+    channelType: channelType ?? "transmitter",
+    status: "active",
+    productId: null,
+  }).returning();
+
+  res.status(201).json(channel);
+});
+
+router.put("/admin/channels/:id", async (req, res) => {
+  const adminId = await requireAdmin(req, res);
+  if (!adminId) return;
+
+  const id = parseInt(req.params.id);
+  const { name, protocol, host, port, username, password, maxBindings, channelType, status } = req.body;
+
+  const updates: Record<string, any> = {};
+  if (name !== undefined) updates.name = name;
+  if (protocol !== undefined) updates.protocol = protocol;
+  if (host !== undefined) updates.host = host;
+  if (port !== undefined) updates.port = Number(port);
+  if (username !== undefined) updates.username = username;
+  if (password) updates.password = password;
+  if (maxBindings !== undefined) updates.maxBindings = Number(maxBindings);
+  if (channelType !== undefined) updates.channelType = channelType;
+  if (status !== undefined) updates.status = status;
+
+  const [updated] = await db.update(channelsTable).set(updates).where(eq(channelsTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Channel not found" }); return; }
+  res.json(updated);
+});
+
+router.delete("/admin/channels/:id", async (req, res) => {
+  const adminId = await requireAdmin(req, res);
+  if (!adminId) return;
+
+  const id = parseInt(req.params.id);
+  await db.delete(channelsTable).where(eq(channelsTable.id, id));
+  res.json({ success: true });
 });
 
 router.get("/admin/records", async (req, res) => {

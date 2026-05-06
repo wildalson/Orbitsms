@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Save, DollarSign, X } from "lucide-react";
+import { ArrowLeft, Save, DollarSign, X, Server } from "lucide-react";
 
 const PERM_LABELS: Record<string, string> = {
   sendSms: "Send SMS",
@@ -56,6 +56,11 @@ export default function AdminClientDetail() {
         smsRate: client.smsRate,
         status: client.status,
         permissions: client.permissions,
+        smppHost: client.smppHost,
+        smppPort: client.smppPort,
+        smppSystemId: client.smppSystemId,
+        smppPassword: client.smppPassword,
+        httpApiKey: client.httpApiKey,
       }),
     });
     const data = await r.json();
@@ -184,6 +189,44 @@ export default function AdminClientDetail() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* SMPP/HTTP Connection Configuration */}
+      <div className="bg-card border border-card-border rounded-lg p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Server className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Connection Configuration</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: "SMPP Host / IP", key: "smppHost", placeholder: "192.168.1.100" },
+            { label: "SMPP Port", key: "smppPort", placeholder: "2775" },
+            { label: "SMPP System ID", key: "smppSystemId", placeholder: "client_system_id" },
+            { label: "SMPP Password", key: "smppPassword", placeholder: "leave blank to keep" },
+          ].map(({ label, key, placeholder }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+              <input
+                type={key === "smppPassword" ? "password" : "text"}
+                value={client[key] ?? ""}
+                onChange={e => setClient((c: any) => ({ ...c, [key]: e.target.value }))}
+                placeholder={placeholder}
+                className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50"
+              />
+            </div>
+          ))}
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">HTTP API Key</label>
+            <input
+              type="text"
+              value={client.httpApiKey ?? ""}
+              onChange={e => setClient((c: any) => ({ ...c, httpApiKey: e.target.value }))}
+              placeholder="sk_live_... (auto-generate or manual)"
+              className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground/60 mt-2">These credentials will be visible to the client in their Account Settings → Connection tab.</p>
       </div>
 
       {/* Recent SMS records */}
