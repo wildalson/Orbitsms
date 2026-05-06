@@ -24,24 +24,34 @@ export default function LoginPage() {
     try {
       if (mode === "login") {
         const data = await loginMut.mutateAsync({ data: { username, password } });
+        const user = data.user as any;
         login(data.token, {
-          id: data.user.id,
-          username: data.user.username,
-          email: data.user.email,
-          phone: data.user.phone,
-          balance: data.user.balance,
-          createdAt: String(data.user.createdAt),
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone ?? null,
+          companyName: user.companyName ?? null,
+          role: user.role ?? "client",
+          status: user.status ?? "active",
+          smsRate: user.smsRate ?? 0.25,
+          balance: user.balance,
+          createdAt: String(user.createdAt),
         });
-        navigate("/");
+        navigate(user.role === "admin" ? "/admin" : "/");
       } else {
         const data = await registerMut.mutateAsync({ data: { username, password, email, phone: phone || undefined } });
+        const user = data.user as any;
         login(data.token, {
-          id: data.user.id,
-          username: data.user.username,
-          email: data.user.email,
-          phone: data.user.phone,
-          balance: data.user.balance,
-          createdAt: String(data.user.createdAt),
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone ?? null,
+          companyName: user.companyName ?? null,
+          role: user.role ?? "client",
+          status: user.status ?? "active",
+          smsRate: user.smsRate ?? 0.25,
+          balance: user.balance,
+          createdAt: String(user.createdAt),
         });
         navigate("/");
       }
@@ -182,9 +192,15 @@ export default function LoginPage() {
             )}
           </p>
 
-          <p className="text-center text-xs text-muted-foreground/40 mt-6">
-            Demo: username <span className="font-mono text-muted-foreground/60">langdemo</span> / password <span className="font-mono text-muted-foreground/60">123456</span>
-          </p>
+          <div className="mt-6 p-3 rounded border border-border/50 bg-muted/20 space-y-1">
+            <p className="text-xs text-muted-foreground/60 font-medium">Demo accounts</p>
+            <p className="text-xs text-muted-foreground/60">
+              Client: <span className="font-mono text-muted-foreground">langdemo</span> / <span className="font-mono text-muted-foreground">123456</span>
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              Admin: <span className="font-mono text-muted-foreground">admin</span> / <span className="font-mono text-muted-foreground">admin123</span>
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -31,29 +31,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem("sms_token");
-    const storedUser = localStorage.getItem("sms_user");
-    if (stored && storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setToken(stored);
-        setUser(parsed);
-        setAuthTokenGetter(() => stored);
-        // Re-validate token with server to get fresh user data (role etc.)
-        fetch("/api/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
-          .then(r => r.ok ? r.json() : null)
-          .then(fresh => {
-            if (fresh) {
-              setUser(fresh);
-              localStorage.setItem("sms_user", JSON.stringify(fresh));
-            }
-          })
-          .catch(() => {});
-      } catch {
-        localStorage.removeItem("sms_token");
-        localStorage.removeItem("sms_user");
-      }
+    if (!stored) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    setToken(stored);
+    setAuthTokenGetter(() => stored);
+
+    // Always re-validate with server so role/status are always fresh
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(fresh => {
+        if (fresh) {
+          setUser(fresh);
+          localStorage.setItem("sms_user", JSON.stringify(fresh));
+        } else {
+          // Token invalid — clear everything
+          localStorage.removeItem("sms_token");
+          localStorage.removeItem("sms_user");
+          setToken(null);
+          setAuthTokenGetter(null);
+        }
+      })
+      .catch(() => {
+        // Network error — try to use cached user
+        const storedUser = localStorage.getItem("sms_user");
+        if (storedUser) {
+          try { setUser(JSON.parse(storedUser)); } catch { /* ignore */ }
+        }
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   function login(newToken: string, newUser: AuthUser) {
