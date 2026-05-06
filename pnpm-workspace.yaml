@@ -172,6 +172,5 @@ overrides:
   # postcss: XSS via unescaped </style> (GHSA-qx2v-qp2m-jg93); fix is >=8.5.10
   postcss: ">=8.5.10"
   # lodash: code injection + prototype pollution (GHSA-r5fr-rjxr-66jc, GHSA-f23m-r3pf-42rh)
-  # Advisory requires >=4.18.0 but that version does not exist on npm (latest is 4.17.21).
-  # Pinning to latest available; no upstream fix published yet.
-  lodash: "^4.17.21"
+  # Fix released as 4.18.0/4.18.1 — force all transitive dependents to patched version.
+  lodash: ">=4.18.0"
