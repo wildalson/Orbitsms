@@ -6,18 +6,20 @@ import { useLang } from "@/hooks/useLang";
 const RESULT_STYLES: Record<string, string> = {
   submitted:      "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered:      "bg-green-500/10 text-green-400 border-green-500/20",
-  failed:         "bg-destructive/10 text-destructive border-destructive/20",
+  rejected:       "bg-red-500/10 text-red-300 border-red-500/20",
+  failed:         "bg-red-500/10 text-red-300 border-red-500/20",
   report_failed:  "bg-orange-500/10 text-orange-400 border-orange-500/20",
   report_success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  report_pending: "bg-muted/50 text-muted-foreground border-border",
+  report_pending: "bg-slate-500/10 text-slate-300 border-slate-500/20",
+  report_not_returned: "bg-slate-500/10 text-slate-300 border-slate-500/20",
 };
 
 function exportToCsv(records: any[]) {
-  const headers = ["ID", "Recipient", "Sender ID", "SMS Content", "Send Result", "Fail Reason", "Cost (₱)", "Delivery Time", "Latency (ms)", "Created At"];
+  const headers = ["ID", "Recipient", "Operator", "Sender ID", "SMS Content", "Send Result", "Fail Reason", "Cost (₱)", "Delivery Time", "Latency (ms)", "Created At"];
   const rows = records.map(r => [
-    r.id, r.recipient, r.senderId ?? "",
+    r.id, r.recipient, r.operator ?? "Unknown", r.senderId ?? "",
     `"${(r.messageContent ?? "").replace(/"/g, '""')}"`,
-    r.sendResult, r.failReason ?? "", r.cost.toFixed(6),
+    r.sendResult, r.failReason ?? "", r.cost.toFixed(2),
     r.deliveredAt ? new Date(r.deliveredAt).toLocaleString() : "",
     r.deliveryLatency ?? "", new Date(r.createdAt).toLocaleString(),
   ]);
@@ -45,10 +47,12 @@ export default function RecordsPage() {
   const RESULT_LABELS: Record<string, string> = {
     submitted:      t("submitted"),
     delivered:      t("delivered"),
-    failed:         t("failed"),
+    rejected:       t("rejected"),
+    failed:         t("rejected"),
     report_failed:  t("reportFailed"),
     report_success: t("reportSuccess"),
-    report_pending: t("reportPending"),
+    report_pending: t("reportNotReturned"),
+    report_not_returned: t("reportNotReturned"),
   };
 
   return (
@@ -95,10 +99,10 @@ export default function RecordsPage() {
           <option value="">{t("sendResult")}</option>
           <option value="submitted">{t("submitted")}</option>
           <option value="delivered">{t("delivered")}</option>
-          <option value="failed">{t("failed")}</option>
+          <option value="rejected">{t("rejected")}</option>
           <option value="report_failed">{t("reportFailed")}</option>
           <option value="report_success">{t("reportSuccess")}</option>
-          <option value="report_pending">{t("reportPending")}</option>
+          <option value="report_not_returned">{t("reportNotReturned")}</option>
         </select>
         <select
           value={productId ?? ""}
@@ -117,6 +121,7 @@ export default function RecordsPage() {
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">{t("id")}</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">{t("recipient")}</th>
+                <th className="text-left px-3 py-3 text-muted-foreground font-medium">{t("operator")}</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">{t("senderId")}</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium min-w-[180px]">{t("smsContent")}</th>
                 <th className="text-right px-3 py-3 text-muted-foreground font-medium">{t("costPhp")}</th>
@@ -130,31 +135,32 @@ export default function RecordsPage() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    {Array.from({ length: 9 }).map((_, j) => (
+                    {Array.from({ length: 10 }).map((_, j) => (
                       <td key={j} className="px-3 py-3"><div className="h-3 bg-muted rounded animate-pulse" /></td>
                     ))}
                   </tr>
                 ))
               ) : data?.data.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">{t("noRecords")}</td>
+                  <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">{t("noRecords")}</td>
                 </tr>
               ) : (
                 data?.data.map((r: any) => (
                   <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="px-3 py-2.5 font-mono text-muted-foreground">{r.id}</td>
                     <td className="px-3 py-2.5 font-mono text-foreground">{r.recipient}</td>
+                    <td className="px-3 py-2.5 text-foreground">{r.operator || "Unknown"}</td>
                     <td className="px-3 py-2.5 text-foreground">{r.senderId || "—"}</td>
                     <td className="px-3 py-2.5 text-foreground max-w-[220px]">
                       <span className="line-clamp-2 text-xs leading-relaxed">{r.messageContent || "—"}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-right font-mono">₱{r.cost.toFixed(6)}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-foreground">₱{r.cost.toFixed(2)}</td>
                     <td className="px-3 py-2.5">
                       <span className={`px-1.5 py-0.5 rounded border ${RESULT_STYLES[r.sendResult]}`}>
                         {RESULT_LABELS[r.sendResult] ?? r.sendResult}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{r.failReason ?? "success"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{r.failReason ?? "—"}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">
                       {r.deliveredAt
                         ? new Date(r.deliveredAt).toLocaleString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })

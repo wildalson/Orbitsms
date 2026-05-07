@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, billingRecordsTable, productsTable, tasksTable, messageRecordsTable } from "@workspace/db";
+import { db, billingRecordsTable, productsTable, tasksTable, messageRecordsTable, usersTable } from "@workspace/db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { ListBillingQueryParams } from "@workspace/api-zod";
 
@@ -32,9 +32,11 @@ router.get("/billing", async (req, res) => {
     record: billingRecordsTable,
     productName: productsTable.name,
     taskName: tasksTable.name,
+    clientName: usersTable.username,
   })
     .from(billingRecordsTable)
     .leftJoin(productsTable, eq(billingRecordsTable.productId, productsTable.id))
+    .leftJoin(usersTable, eq(productsTable.userId, usersTable.id))
     .leftJoin(tasksTable, eq(billingRecordsTable.taskId, tasksTable.id))
     .where(whereClause)
     .orderBy(desc(billingRecordsTable.createdAt))
@@ -50,6 +52,7 @@ router.get("/billing", async (req, res) => {
       id: r.record.id,
       productId: r.record.productId,
       productName: r.productName ?? "",
+      clientName: r.clientName ?? "",
       taskId: r.record.taskId,
       taskName: r.taskName ?? null,
       type: r.record.type,
@@ -72,7 +75,7 @@ router.get("/billing/summary", async (_req, res) => {
   const totalMessages = bills.reduce((sum, b) => sum + b.messageCount, 0);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
+  const totalFailed = allRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
 
   res.json({
     totalExpense: Math.round(totalExpense * 10000) / 10000,

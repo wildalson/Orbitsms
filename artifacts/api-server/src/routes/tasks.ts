@@ -75,7 +75,7 @@ router.post("/tasks", async (req, res) => {
     return;
   }
   const { name, productId, messageContent, recipients, scheduledAt } = parsed.data;
-  const senderId = parsed.data.senderId?.trim() || "OrbitSMS";
+  const senderId = parsed.data.senderId?.trim() ?? "";
 
   const [productRow] = await db.select({
     product: productsTable,
@@ -92,7 +92,7 @@ router.post("/tasks", async (req, res) => {
   const product = productRow.product;
   const owner = productRow.user;
 
-  const costPerSms = 0.005;
+  const costPerSms = Number(owner?.smsRate ?? 0.25);
   const totalCost = recipients.length * costPerSms;
 
   const [task] = await db.insert(tasksTable).values({
@@ -132,7 +132,7 @@ router.post("/tasks", async (req, res) => {
       )
     : null;
 
-  const simulatedResults = ["submitted", "delivered", "failed"] as const;
+  const simulatedResults = ["submitted", "delivered", "rejected"] as const;
   let deliveredCount = 0;
   let failedCount = 0;
 
@@ -145,14 +145,14 @@ router.post("/tasks", async (req, res) => {
         simulatedResults[Math.floor(Math.random() * simulatedResults.length)];
       const isDelivered = sendResult === "delivered";
       if (isDelivered) deliveredCount += 1;
-      if (sendResult === "failed") failedCount += 1;
+      if (sendResult === "rejected") failedCount += 1;
 
       return {
         taskId: task.id,
         productId,
         recipient,
         sendResult,
-        failReason: sendResult === "failed" ? (smppResult?.error ?? "Network error") : null,
+        failReason: sendResult === "rejected" ? (smppResult?.error ?? "Network error") : null,
         deliveredAt: isDelivered ? new Date() : null,
         deliveryLatency: isDelivered ? Math.floor(Math.random() * 20) + 2 : null,
         cost: String(costPerSms),

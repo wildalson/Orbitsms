@@ -1,9 +1,42 @@
 import { Router } from "express";
-import { db, messageRecordsTable, tasksTable, productsTable } from "@workspace/db";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { db, messageRecordsTable, tasksTable, productsTable, usersTable } from "@workspace/db";
+import { eq, and, gte, lte, desc, sql, inArray } from "drizzle-orm";
 import { ListRecordsQueryParams } from "@workspace/api-zod";
+import { detectPhilippineOperator } from "../lib/ph-operators";
+import { fetchLaafficReports } from "../lib/laaffic-reports";
 
 const router = Router();
+
+async function refreshLaafficReportsForRecords(records: Array<{
+  record: typeof messageRecordsTable.$inferSelect;
+  appId: string | null;
+  apiKey: string | null;
+  apiSecret: string | null;
+}>) {
+  const candidates = records.filter((r) =>
+    ["submitted", "report_not_returned", "report_pending"].includes(r.record.sendResult),
+  );
+  if (candidates.length === 0) return;
+
+  const reports = await fetchLaafficReports(
+    {
+      appId: candidates[0]?.appId ?? null,
+      apiKey: candidates[0]?.apiKey ?? null,
+      apiSecret: candidates[0]?.apiSecret ?? null,
+    },
+    candidates.map((r) => r.record.messageId),
+  );
+
+  for (const candidate of candidates) {
+    const report = reports.get(candidate.record.messageId);
+    if (!report) continue;
+    await db.update(messageRecordsTable).set({
+      sendResult: report.sendResult,
+      deliveredAt: report.deliveredAt,
+      failReason: report.failReason,
+    }).where(eq(messageRecordsTable.id, candidate.record.id));
+  }
+}
 
 router.get("/records", async (req, res) => {
   const parsed = ListRecordsQueryParams.safeParse(req.query);
@@ -40,28 +73,50 @@ router.get("/records", async (req, res) => {
     messageContent: tasksTable.messageContent,
     senderId: tasksTable.senderId,
     productName: productsTable.name,
+    appId: usersTable.httpApiKey,
+    apiKey: usersTable.smppSystemId,
+    apiSecret: usersTable.smppPassword,
   })
     .from(messageRecordsTable)
     .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
     .leftJoin(productsTable, eq(messageRecordsTable.productId, productsTable.id))
+    .leftJoin(usersTable, eq(productsTable.userId, usersTable.id))
     .where(whereClause)
     .orderBy(desc(messageRecordsTable.createdAt))
     .limit(pageSize)
     .offset((page - 1) * pageSize);
+
+  await refreshLaafficReportsForRecords(records);
+
+  const refreshedRecords = records.length > 0
+    ? await db.select({
+      record: messageRecordsTable,
+      taskName: tasksTable.name,
+      messageContent: tasksTable.messageContent,
+      senderId: tasksTable.senderId,
+      productName: productsTable.name,
+    })
+      .from(messageRecordsTable)
+      .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
+      .leftJoin(productsTable, eq(messageRecordsTable.productId, productsTable.id))
+      .where(inArray(messageRecordsTable.id, records.map((r) => r.record.id)))
+      .orderBy(desc(messageRecordsTable.createdAt))
+    : [];
 
   const totalRows = await db.select({ count: sql<number>`count(*)` })
     .from(messageRecordsTable)
     .where(whereClause);
 
   res.json({
-    data: records.map(r => ({
+    data: refreshedRecords.map(r => ({
       id: r.record.id,
       taskId: r.record.taskId,
       taskName: r.taskName ?? "",
       messageContent: r.messageContent ?? "",
-      senderId: r.senderId ?? "",
+      senderId: r.senderId || "Laaffic default",
       productId: r.record.productId,
       productName: r.productName ?? "",
+      operator: detectPhilippineOperator(r.record.recipient),
       recipient: r.record.recipient,
       sendResult: r.record.sendResult,
       failReason: r.record.failReason,
@@ -81,7 +136,7 @@ router.get("/records/stats", async (_req, res) => {
   const allRecords = await db.select().from(messageRecordsTable);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
+  const totalFailed = allRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
   const totalCost = allRecords.reduce((sum, r) => sum + Number(r.cost), 0);
   const latencies = allRecords.filter(r => r.deliveryLatency != null).map(r => r.deliveryLatency!);
   const avgLatencyMs = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;

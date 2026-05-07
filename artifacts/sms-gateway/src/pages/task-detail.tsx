@@ -5,19 +5,23 @@ import { ArrowLeft, CheckCircle, XCircle, Send, TrendingUp } from "lucide-react"
 const RESULT_STYLES: Record<string, string> = {
   submitted: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered: "bg-green-500/10 text-green-400 border-green-500/20",
-  failed: "bg-destructive/10 text-destructive border-destructive/20",
+  rejected: "bg-red-500/10 text-red-300 border-red-500/20",
+  failed: "bg-red-500/10 text-red-300 border-red-500/20",
   report_failed: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   report_success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  report_pending: "bg-muted/50 text-muted-foreground border-border",
+  report_pending: "bg-slate-500/10 text-slate-300 border-slate-500/20",
+  report_not_returned: "bg-slate-500/10 text-slate-300 border-slate-500/20",
 };
 
 const RESULT_LABELS: Record<string, string> = {
   submitted: "Submitted",
   delivered: "Delivered",
-  failed: "Failed",
+  rejected: "Rejected",
+  failed: "Rejected",
   report_failed: "Report Failed",
-  report_success: "Report Success",
-  report_pending: "Report Pending",
+  report_success: "Report Successful",
+  report_pending: "Report Not Returned",
+  report_not_returned: "Report Not Returned",
 };
 
 export default function TaskDetailPage() {
@@ -96,8 +100,8 @@ export default function TaskDetailPage() {
           {task.messageContent}
         </p>
         <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-          <span>Sender: <span className="text-foreground">{task.senderId}</span></span>
-          <span>Cost: <span className="text-primary font-mono">${task.cost.toFixed(6)}</span></span>
+          <span>Sender: <span className="text-foreground">{task.senderId || "Laaffic default"}</span></span>
+          <span>Cost: <span className="text-primary font-mono">₱{task.cost.toFixed(2)}</span></span>
         </div>
       </div>
 
@@ -144,7 +148,7 @@ export default function TaskDetailPage() {
                       </span>
                     ) : "—"}
                   </td>
-                  <td className="px-4 py-2.5 text-right font-mono">{r.cost.toFixed(6)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-foreground">₱{r.cost.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

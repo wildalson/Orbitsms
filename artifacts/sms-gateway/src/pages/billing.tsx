@@ -7,7 +7,7 @@ function exportToCsv(records: any[]) {
   const headers = ["ID", "Workspace", "Type", "Task", "Amount (₱)", "Messages", "Description", "Created At"];
   const rows = records.map(r => [
     r.id, r.productName, r.type, r.taskName ?? "",
-    r.amount.toFixed(6), r.messageCount,
+    r.amount.toFixed(2), r.messageCount,
     `"${(r.description ?? "").replace(/"/g, '""')}"`,
     new Date(r.createdAt).toLocaleString(),
   ]);
@@ -117,10 +117,10 @@ export default function BillingPage() {
                         {b.type === "sms" ? t("sms") : t("recharge")}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground max-w-[120px] truncate">{b.taskName ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-primary">₱{b.amount.toFixed(6)}</td>
-                    <td className="px-4 py-2.5 text-right font-mono">{b.messageCount.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate">{b.description}</td>
+                    <td className="px-4 py-2.5 text-foreground max-w-[120px] truncate">{b.taskName ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-primary">₱{b.amount.toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-foreground">{b.messageCount.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-foreground max-w-[200px] truncate">{b.description}</td>
                     <td className="px-4 py-2.5 text-right text-muted-foreground">
                       {new Date(b.createdAt).toLocaleString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
                     </td>

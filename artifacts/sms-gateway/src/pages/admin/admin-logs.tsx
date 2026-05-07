@@ -5,18 +5,31 @@ import { Download, ChevronLeft, ChevronRight } from "lucide-react";
 const RESULT_STYLES: Record<string, string> = {
   submitted: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered: "bg-green-500/10 text-green-400 border-green-500/20",
-  failed: "bg-destructive/10 text-destructive border-destructive/20",
+  rejected: "bg-red-500/10 text-red-300 border-red-500/20",
+  failed: "bg-red-500/10 text-red-300 border-red-500/20",
   report_failed: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   report_success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  report_pending: "bg-muted/50 text-muted-foreground border-border",
+  report_pending: "bg-slate-500/10 text-slate-300 border-slate-500/20",
+  report_not_returned: "bg-slate-500/10 text-slate-300 border-slate-500/20",
+};
+
+const RESULT_LABELS: Record<string, string> = {
+  submitted: "Submitted",
+  delivered: "Delivered",
+  rejected: "Rejected",
+  failed: "Rejected",
+  report_failed: "Report Failed",
+  report_success: "Report Successful",
+  report_pending: "Report Not Returned",
+  report_not_returned: "Report Not Returned",
 };
 
 function exportCsv(records: any[]) {
-  const headers = ["ID", "Workspace", "Recipient", "Sender ID", "SMS Content", "Result", "Fail Reason", "Cost (₱)", "Latency (ms)", "Created At"];
+  const headers = ["ID", "Client", "Workspace", "Operator", "Recipient", "Sender ID", "SMS Content", "Result", "Fail Reason", "Cost (₱)", "Latency (ms)", "Created At"];
   const rows = records.map(r => [
-    r.id, r.productName, r.recipient, r.senderId,
+    r.id, r.clientName, r.productName, r.operator, r.recipient, r.senderId,
     `"${(r.messageContent ?? "").replace(/"/g, '""')}"`,
-    r.sendResult, r.failReason ?? "", r.cost.toFixed(6),
+    RESULT_LABELS[r.sendResult] ?? r.sendResult, r.failReason ?? "", r.cost.toFixed(2),
     r.deliveryLatency ?? "", new Date(r.createdAt).toLocaleString(),
   ]);
   const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -72,10 +85,10 @@ export default function AdminLogs() {
           <option value="">All Results</option>
           <option value="submitted">Submitted</option>
           <option value="delivered">Delivered</option>
-          <option value="failed">Failed</option>
+          <option value="rejected">Rejected</option>
           <option value="report_failed">Report Failed</option>
-          <option value="report_success">Report Success</option>
-          <option value="report_pending">Report Pending</option>
+          <option value="report_success">Report Successful</option>
+          <option value="report_not_returned">Report Not Returned</option>
         </select>
       </div>
 
@@ -85,7 +98,9 @@ export default function AdminLogs() {
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">ID</th>
+                <th className="text-left px-3 py-3 text-muted-foreground font-medium">Client</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">Workspace</th>
+                <th className="text-left px-3 py-3 text-muted-foreground font-medium">Operator</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">Recipient</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium">Sender ID</th>
                 <th className="text-left px-3 py-3 text-muted-foreground font-medium min-w-[160px]">Content</th>
@@ -100,28 +115,33 @@ export default function AdminLogs() {
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 12 }).map((_, j) => (
                       <td key={j} className="px-3 py-3"><div className="h-3 bg-muted rounded animate-pulse" /></td>
                     ))}
                   </tr>
                 ))
               ) : records.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">No logs found</td></tr>
+                <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">No logs found</td></tr>
               ) : (
                 records.map(r => (
                   <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="px-3 py-2.5 font-mono text-muted-foreground">{r.id}</td>
                     <td className="px-3 py-2.5">
+                      <div className="font-medium text-foreground">{r.clientName || "—"}</div>
+                      {r.clientCompany && <div className="text-[11px] text-muted-foreground">{r.clientCompany}</div>}
+                    </td>
+                    <td className="px-3 py-2.5">
                       <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{r.productName}</span>
                     </td>
-                    <td className="px-3 py-2.5 font-mono">{r.recipient}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{r.senderId || "—"}</td>
-                    <td className="px-3 py-2.5 max-w-[180px]"><span className="line-clamp-2 leading-relaxed">{r.messageContent || "—"}</span></td>
+                    <td className="px-3 py-2.5 text-foreground">{r.operator || "Unknown"}</td>
+                    <td className="px-3 py-2.5 font-mono text-foreground">{r.recipient}</td>
+                    <td className="px-3 py-2.5 text-foreground">{r.senderId || "Laaffic default"}</td>
+                    <td className="px-3 py-2.5 max-w-[180px] text-foreground"><span className="line-clamp-2 leading-relaxed">{r.messageContent || "—"}</span></td>
                     <td className="px-3 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded border ${RESULT_STYLES[r.sendResult] ?? ""}`}>{r.sendResult}</span>
+                      <span className={`px-1.5 py-0.5 rounded border ${RESULT_STYLES[r.sendResult] ?? ""}`}>{RESULT_LABELS[r.sendResult] ?? r.sendResult}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{r.failReason ?? "success"}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-primary">₱{r.cost.toFixed(6)}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.failReason ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-primary">₱{r.cost.toFixed(2)}</td>
                     <td className="px-3 py-2.5 text-center">
                       {r.deliveryLatency != null ? (
                         <span className={`px-2 py-0.5 rounded font-mono font-bold ${r.deliveryLatency > 100 ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-400"}`}>

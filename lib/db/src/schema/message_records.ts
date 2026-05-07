@@ -10,12 +10,21 @@ export const messageRecordsTable = pgTable("message_records", {
   productId: integer("product_id").notNull().references(() => productsTable.id),
   recipient: text("recipient").notNull(),
   sendResult: text("send_result", {
-    enum: ["submitted", "delivered", "failed", "report_failed", "report_success", "report_pending"],
+    enum: [
+      "submitted",
+      "delivered",
+      "rejected",
+      "failed",
+      "report_failed",
+      "report_success",
+      "report_pending",
+      "report_not_returned",
+    ],
   }).notNull().default("submitted"),
   failReason: text("fail_reason"),
   deliveredAt: timestamp("delivered_at"),
   deliveryLatency: integer("delivery_latency"),
-  cost: numeric("cost", { precision: 18, scale: 6 }).notNull().default("0.005"),
+  cost: numeric("cost", { precision: 18, scale: 6 }).notNull().default("0.250000"),
   messageId: text("message_id").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

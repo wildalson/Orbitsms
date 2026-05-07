@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { db, usersTable, messageRecordsTable, tasksTable, productsTable, billingRecordsTable, channelsTable } from "@workspace/db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, inArray } from "drizzle-orm";
+import { detectPhilippineOperator } from "../lib/ph-operators";
+import { fetchLaafficReports } from "../lib/laaffic-reports";
 import crypto from "crypto";
 
 const router = Router();
@@ -54,7 +56,7 @@ router.get("/admin/stats", async (req, res) => {
   const allRecords = await db.select().from(messageRecordsTable);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
+  const totalFailed = allRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
   const totalRevenue = allRecords.reduce((s, r) => s + Number(r.cost), 0);
 
   res.json({
@@ -144,7 +146,12 @@ router.get("/admin/clients/:id", async (req, res) => {
   const [user] = await db.select().from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "client")));
   if (!user) { res.status(404).json({ error: "Client not found" }); return; }
 
+  const clientProducts = await db.select({ id: productsTable.id }).from(productsTable).where(eq(productsTable.userId, id));
+  const clientProductIds = clientProducts.map((p) => p.id);
   const billingHistory = await db.select().from(billingRecordsTable)
+    .where(clientProductIds.length > 0
+      ? inArray(billingRecordsTable.productId, clientProductIds)
+      : sql`false`)
     .orderBy(desc(billingRecordsTable.createdAt))
     .limit(20);
 
@@ -155,7 +162,9 @@ router.get("/admin/clients/:id", async (req, res) => {
   })
     .from(messageRecordsTable)
     .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
-    .where(eq(messageRecordsTable.productId, id))
+    .where(clientProductIds.length > 0
+      ? inArray(messageRecordsTable.productId, clientProductIds)
+      : sql`false`)
     .orderBy(desc(messageRecordsTable.createdAt))
     .limit(20);
 
@@ -329,14 +338,52 @@ router.get("/admin/records", async (req, res) => {
     messageContent: tasksTable.messageContent,
     senderId: tasksTable.senderId,
     productName: productsTable.name,
+    clientId: usersTable.id,
+    clientName: usersTable.username,
+    clientCompany: usersTable.companyName,
+    appId: usersTable.httpApiKey,
+    apiKey: usersTable.smppSystemId,
+    apiSecret: usersTable.smppPassword,
   })
     .from(messageRecordsTable)
     .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
     .leftJoin(productsTable, eq(messageRecordsTable.productId, productsTable.id))
+    .leftJoin(usersTable, eq(productsTable.userId, usersTable.id))
     .where(whereClause)
     .orderBy(desc(messageRecordsTable.createdAt))
     .limit(pageSize)
     .offset((page - 1) * pageSize);
+
+  const reportCandidates = records.filter((r) =>
+    ["submitted", "report_not_returned", "report_pending"].includes(r.record.sendResult),
+  );
+  const groups = new Map<string, typeof reportCandidates>();
+  for (const row of reportCandidates) {
+    const key = `${row.appId ?? ""}:${row.apiKey ?? ""}:${row.apiSecret ?? ""}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  for (const group of groups.values()) {
+    const reports = await fetchLaafficReports(
+      {
+        appId: group[0]?.appId ?? null,
+        apiKey: group[0]?.apiKey ?? null,
+        apiSecret: group[0]?.apiSecret ?? null,
+      },
+      group.map((r) => r.record.messageId),
+    );
+    for (const row of group) {
+      const report = reports.get(row.record.messageId);
+      if (!report) continue;
+      await db.update(messageRecordsTable).set({
+        sendResult: report.sendResult,
+        deliveredAt: report.deliveredAt,
+        failReason: report.failReason,
+      }).where(eq(messageRecordsTable.id, row.record.id));
+      row.record.sendResult = report.sendResult;
+      row.record.deliveredAt = report.deliveredAt;
+      row.record.failReason = report.failReason;
+    }
+  }
 
   const totalRows = await db.select({ count: sql<number>`count(*)` })
     .from(messageRecordsTable)
@@ -345,10 +392,14 @@ router.get("/admin/records", async (req, res) => {
   res.json({
     data: records.map(r => ({
       id: r.record.id,
+      clientId: r.clientId,
+      clientName: r.clientName ?? "—",
+      clientCompany: r.clientCompany ?? "",
       taskName: r.taskName ?? "—",
       messageContent: r.messageContent ?? "",
-      senderId: r.senderId ?? "",
+      senderId: r.senderId || "Laaffic default",
       productName: r.productName ?? "",
+      operator: detectPhilippineOperator(r.record.recipient),
       recipient: r.record.recipient,
       sendResult: r.record.sendResult,
       failReason: r.record.failReason,

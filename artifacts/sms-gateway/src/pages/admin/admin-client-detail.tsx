@@ -16,10 +16,23 @@ const PERM_LABELS: Record<string, string> = {
 const RESULT_STYLES: Record<string, string> = {
   submitted: "bg-blue-500/10 text-blue-400",
   delivered: "bg-green-500/10 text-green-400",
-  failed: "bg-destructive/10 text-destructive",
+  rejected: "bg-red-500/10 text-red-300",
+  failed: "bg-red-500/10 text-red-300",
   report_success: "bg-emerald-500/10 text-emerald-400",
   report_failed: "bg-orange-500/10 text-orange-400",
-  report_pending: "bg-muted/50 text-muted-foreground",
+  report_pending: "bg-slate-500/10 text-slate-300",
+  report_not_returned: "bg-slate-500/10 text-slate-300",
+};
+
+const RESULT_LABELS: Record<string, string> = {
+  submitted: "Submitted",
+  delivered: "Delivered",
+  rejected: "Rejected",
+  failed: "Rejected",
+  report_success: "Report Successful",
+  report_failed: "Report Failed",
+  report_pending: "Report Not Returned",
+  report_not_returned: "Report Not Returned",
 };
 
 export default function AdminClientDetail() {
@@ -250,13 +263,13 @@ export default function AdminClientDetail() {
               <tbody>
                 {client.records.map((r: any) => (
                   <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-2 font-mono">{r.recipient}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{r.senderId || "—"}</td>
-                    <td className="px-4 py-2 max-w-[180px]"><span className="line-clamp-1">{r.messageContent || "—"}</span></td>
+                    <td className="px-4 py-2 font-mono text-foreground">{r.recipient}</td>
+                    <td className="px-4 py-2 text-foreground">{r.senderId || "Laaffic default"}</td>
+                    <td className="px-4 py-2 max-w-[180px] text-foreground"><span className="line-clamp-1">{r.messageContent || "—"}</span></td>
                     <td className="px-4 py-2">
-                      <span className={`px-1.5 py-0.5 rounded ${RESULT_STYLES[r.sendResult] ?? ""}`}>{r.sendResult}</span>
+                      <span className={`px-1.5 py-0.5 rounded ${RESULT_STYLES[r.sendResult] ?? ""}`}>{RESULT_LABELS[r.sendResult] ?? r.sendResult}</span>
                     </td>
-                    <td className="px-4 py-2 text-right font-mono">₱{r.cost.toFixed(6)}</td>
+                    <td className="px-4 py-2 text-right font-mono text-primary">₱{r.cost.toFixed(2)}</td>
                     <td className="px-4 py-2 text-right text-muted-foreground">{new Date(r.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
@@ -291,7 +304,7 @@ export default function AdminClientDetail() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right font-mono">₱{b.amount.toFixed(2)}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{b.description}</td>
+                    <td className="px-4 py-2 text-foreground">{b.description}</td>
                     <td className="px-4 py-2 text-right text-muted-foreground">{new Date(b.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}

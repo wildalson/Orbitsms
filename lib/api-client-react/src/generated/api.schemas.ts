@@ -218,10 +218,12 @@ export type MessageRecordSendResult =
 export const MessageRecordSendResult = {
   submitted: "submitted",
   delivered: "delivered",
+  rejected: "rejected",
   failed: "failed",
   report_failed: "report_failed",
   report_success: "report_success",
   report_pending: "report_pending",
+  report_not_returned: "report_not_returned",
 } as const;
 
 export interface MessageRecord {
@@ -230,6 +232,9 @@ export interface MessageRecord {
   taskName: string;
   productId: number;
   productName: string;
+  operator?: string;
+  senderId?: string;
+  messageContent?: string;
   recipient: string;
   sendResult: MessageRecordSendResult;
   failReason?: string | null;
@@ -268,6 +273,7 @@ export interface BillingRecord {
   id: number;
   productId: number;
   productName: string;
+  clientName?: string;
   taskId?: number | null;
   taskName?: string | null;
   type: BillingRecordType;
@@ -326,10 +332,10 @@ export type ListRecordsSendResult =
 export const ListRecordsSendResult = {
   submitted: "submitted",
   delivered: "delivered",
-  failed: "failed",
+  rejected: "rejected",
   report_failed: "report_failed",
   report_success: "report_success",
-  report_pending: "report_pending",
+  report_not_returned: "report_not_returned",
 } as const;
 
 export type ListBillingParams = {
