@@ -6,12 +6,7 @@ import { useLang } from "@/hooks/useLang";
 const RESULT_STYLES: Record<string, string> = {
   submitted:      "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered:      "bg-green-500/10 text-green-400 border-green-500/20",
-  rejected:       "bg-red-500/10 text-red-300 border-red-500/20",
   failed:         "bg-red-500/10 text-red-300 border-red-500/20",
-  report_failed:  "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  report_success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  report_pending: "bg-slate-500/10 text-slate-300 border-slate-500/20",
-  report_not_returned: "bg-slate-500/10 text-slate-300 border-slate-500/20",
 };
 
 function exportToCsv(records: any[]) {
@@ -47,12 +42,7 @@ export default function RecordsPage() {
   const RESULT_LABELS: Record<string, string> = {
     submitted:      t("submitted"),
     delivered:      t("delivered"),
-    rejected:       t("rejected"),
-    failed:         t("rejected"),
-    report_failed:  t("reportFailed"),
-    report_success: t("reportSuccess"),
-    report_pending: t("reportNotReturned"),
-    report_not_returned: t("reportNotReturned"),
+    failed:         t("failed"),
   };
 
   return (
@@ -99,10 +89,7 @@ export default function RecordsPage() {
           <option value="">{t("sendResult")}</option>
           <option value="submitted">{t("submitted")}</option>
           <option value="delivered">{t("delivered")}</option>
-          <option value="rejected">{t("rejected")}</option>
-          <option value="report_failed">{t("reportFailed")}</option>
-          <option value="report_success">{t("reportSuccess")}</option>
-          <option value="report_not_returned">{t("reportNotReturned")}</option>
+          <option value="failed">{t("failed")}</option>
         </select>
         <select
           value={productId ?? ""}

@@ -5,12 +5,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Send, Smartphone, Upload, FileText, AlertCircle, X } from "lucide-react";
 import { detectOperator } from "@/lib/ph-operators";
 import { useLang } from "@/hooks/useLang";
+import { useAuth } from "@/hooks/useAuth";
 import * as XLSX from "xlsx";
 
 const MAX_SMS_CHARS = 160;
 
 export default function CreateTaskPage() {
   const { t } = useLang();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { data: products } = useListProducts();
@@ -39,6 +41,8 @@ export default function CreateTaskPage() {
   const charCount = messageContent.length;
   const smsCount = Math.ceil(charCount / MAX_SMS_CHARS) || 1;
   const selectedProduct = products?.find((p) => p.id === productId);
+  const smsRate = user?.smsRate ?? 0.25;
+  const estimatedCost = recipients.length * smsRate * smsCount;
 
   const operatorBreakdown = recipients.reduce<Record<string, number>>((acc, num) => {
     const op = detectOperator(num);
@@ -302,8 +306,12 @@ export default function CreateTaskPage() {
                   <span className="text-foreground">{selectedProduct?.name ?? "—"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("estCost")}</span>
-                  <span className="text-primary font-mono">₱{(recipients.length * 0.25 * smsCount).toFixed(2)}</span>
+                  <span className="text-foreground font-medium">{t("costPhp")}</span>
+                  <span className="text-foreground font-mono font-semibold">₱{estimatedCost.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rate/SMS</span>
+                  <span className="text-foreground font-mono">₱{smsRate.toFixed(2)}</span>
                 </div>
               </div>
               {recipients.length > 0 && (

@@ -218,12 +218,7 @@ export type MessageRecordSendResult =
 export const MessageRecordSendResult = {
   submitted: "submitted",
   delivered: "delivered",
-  rejected: "rejected",
   failed: "failed",
-  report_failed: "report_failed",
-  report_success: "report_success",
-  report_pending: "report_pending",
-  report_not_returned: "report_not_returned",
 } as const;
 
 export interface MessageRecord {
@@ -332,10 +327,7 @@ export type ListRecordsSendResult =
 export const ListRecordsSendResult = {
   submitted: "submitted",
   delivered: "delivered",
-  rejected: "rejected",
-  report_failed: "report_failed",
-  report_success: "report_success",
-  report_not_returned: "report_not_returned",
+  failed: "failed",
 } as const;
 
 export type ListBillingParams = {

@@ -346,16 +346,7 @@ export const listRecordsQueryPageSizeDefault = 20;
 
 export const ListRecordsQueryParams = zod.object({
   taskId: zod.coerce.number().optional(),
-  sendResult: zod
-    .enum([
-      "submitted",
-      "delivered",
-      "rejected",
-      "report_failed",
-      "report_success",
-      "report_not_returned",
-    ])
-    .optional(),
+  sendResult: zod.enum(["submitted", "delivered", "failed"]).optional(),
   productId: zod.coerce.number().optional(),
   startTime: zod.date().optional(),
   endTime: zod.date().optional(),
@@ -375,16 +366,7 @@ export const ListRecordsResponse = zod.object({
       senderId: zod.string().optional(),
       messageContent: zod.string().optional(),
       recipient: zod.string(),
-      sendResult: zod.enum([
-        "submitted",
-        "delivered",
-        "rejected",
-        "failed",
-        "report_failed",
-        "report_success",
-        "report_pending",
-        "report_not_returned",
-      ]),
+      sendResult: zod.enum(["submitted", "delivered", "failed"]),
       failReason: zod.string().nullish(),
       deliveredAt: zod.coerce.date().nullish(),
       deliveryLatency: zod.number().nullish(),

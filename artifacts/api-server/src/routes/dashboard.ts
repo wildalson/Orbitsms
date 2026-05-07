@@ -32,7 +32,7 @@ router.get("/dashboard/summary", async (req, res) => {
   const todaySent = todayRecords.length;
   const monthSent = monthRecords.length;
   const todayDelivered = todayRecords.filter(r => r.sendResult === "delivered").length;
-  const todayFailed = todayRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
+  const todayFailed = todayRecords.filter(r => r.sendResult === "failed").length;
   const successRate = todaySent > 0 ? Math.round((todayDelivered / todaySent) * 1000) / 10 : 0;
 
   const products = await db.select().from(productsTable).where(eq(productsTable.userId, userId));

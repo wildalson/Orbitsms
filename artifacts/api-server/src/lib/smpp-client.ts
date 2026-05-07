@@ -19,7 +19,7 @@ type SubmitMessageInput = {
 
 type SubmitMessageResult = {
   recipient: string;
-  status: "submitted" | "rejected";
+  status: "submitted" | "failed";
   messageId: string;
   error?: string;
 };
@@ -117,7 +117,7 @@ function submitSm(
 
           resolve({
             recipient: input.recipient,
-            status: "rejected",
+            status: "failed",
             messageId,
             error: `SMPP submit failed with status ${pdu.command_status ?? "unknown"}`,
           });
@@ -144,7 +144,7 @@ export async function sendMessagesOverSmpp(
       } catch (error) {
         results.push({
           recipient: message.recipient,
-          status: "rejected",
+          status: "failed",
           messageId: `smpp-error-${Date.now()}`,
           error: error instanceof Error ? error.message : "SMPP submit failed",
         });

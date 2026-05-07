@@ -361,7 +361,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [submitted, delivered, rejected, report_failed, report_success, report_not_returned]
+            enum: [submitted, delivered, failed]
         - name: productId
           in: query
           schema:
@@ -769,7 +769,7 @@ components:
           type: string
         sendResult:
           type: string
-          enum: [submitted, delivered, rejected, failed, report_failed, report_success, report_pending, report_not_returned]
+          enum: [submitted, delivered, failed]
         failReason:
           type: string
           nullable: true

@@ -75,7 +75,7 @@ router.get("/billing/summary", async (_req, res) => {
   const totalMessages = bills.reduce((sum, b) => sum + b.messageCount, 0);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
+  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
 
   res.json({
     totalExpense: Math.round(totalExpense * 10000) / 10000,

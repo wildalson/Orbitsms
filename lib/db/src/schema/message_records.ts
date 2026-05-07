@@ -13,12 +13,7 @@ export const messageRecordsTable = pgTable("message_records", {
     enum: [
       "submitted",
       "delivered",
-      "rejected",
       "failed",
-      "report_failed",
-      "report_success",
-      "report_pending",
-      "report_not_returned",
     ],
   }).notNull().default("submitted"),
   failReason: text("fail_reason"),

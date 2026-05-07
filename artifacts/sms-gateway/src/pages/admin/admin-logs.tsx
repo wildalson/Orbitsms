@@ -5,23 +5,13 @@ import { Download, ChevronLeft, ChevronRight } from "lucide-react";
 const RESULT_STYLES: Record<string, string> = {
   submitted: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered: "bg-green-500/10 text-green-400 border-green-500/20",
-  rejected: "bg-red-500/10 text-red-300 border-red-500/20",
   failed: "bg-red-500/10 text-red-300 border-red-500/20",
-  report_failed: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  report_success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  report_pending: "bg-slate-500/10 text-slate-300 border-slate-500/20",
-  report_not_returned: "bg-slate-500/10 text-slate-300 border-slate-500/20",
 };
 
 const RESULT_LABELS: Record<string, string> = {
   submitted: "Submitted",
   delivered: "Delivered",
-  rejected: "Rejected",
-  failed: "Rejected",
-  report_failed: "Report Failed",
-  report_success: "Report Successful",
-  report_pending: "Report Not Returned",
-  report_not_returned: "Report Not Returned",
+  failed: "Failed",
 };
 
 function exportCsv(records: any[]) {
@@ -85,10 +75,7 @@ export default function AdminLogs() {
           <option value="">All Results</option>
           <option value="submitted">Submitted</option>
           <option value="delivered">Delivered</option>
-          <option value="rejected">Rejected</option>
-          <option value="report_failed">Report Failed</option>
-          <option value="report_success">Report Successful</option>
-          <option value="report_not_returned">Report Not Returned</option>
+          <option value="failed">Failed</option>
         </select>
       </div>
 

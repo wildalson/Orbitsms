@@ -56,7 +56,7 @@ router.get("/admin/stats", async (req, res) => {
   const allRecords = await db.select().from(messageRecordsTable);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
+  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
   const totalRevenue = allRecords.reduce((s, r) => s + Number(r.cost), 0);
 
   res.json({
@@ -355,7 +355,7 @@ router.get("/admin/records", async (req, res) => {
     .offset((page - 1) * pageSize);
 
   const reportCandidates = records.filter((r) =>
-    ["submitted", "report_not_returned", "report_pending"].includes(r.record.sendResult),
+    r.record.sendResult === "submitted",
   );
   const groups = new Map<string, typeof reportCandidates>();
   for (const row of reportCandidates) {

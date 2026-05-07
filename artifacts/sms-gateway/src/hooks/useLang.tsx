@@ -48,7 +48,6 @@ const T: Translations = {
   sending:          { en: "Sending",              zh: "发送中" },
   completed:        { en: "Completed",            zh: "已完成" },
   failed:           { en: "Failed",               zh: "失败" },
-  rejected:         { en: "Rejected",             zh: "已拒绝" },
   delivered:        { en: "Delivered",            zh: "已送达" },
   submitted:        { en: "Submitted",            zh: "已提交" },
 
@@ -94,10 +93,6 @@ const T: Translations = {
   deliveryTime:     { en: "Delivery Time",        zh: "投递时间" },
   latency:          { en: "Latency",              zh: "延迟" },
   noRecords:        { en: "No records found",     zh: "暂无记录" },
-  reportFailed:     { en: "Report Failed",        zh: "报告失败" },
-  reportSuccess:    { en: "Report Successful",    zh: "报告成功" },
-  reportPending:    { en: "Report Pending",       zh: "报告待定" },
-  reportNotReturned:{ en: "Report Not Returned",  zh: "报告未返回" },
 
   // Billing
   financialRecords: { en: "Financial Records",    zh: "财务记录" },

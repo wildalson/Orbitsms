@@ -20,7 +20,7 @@ type LaafficReportResponse = {
 
 export type NormalizedReport = {
   messageId: string;
-  sendResult: "delivered" | "report_failed" | "report_not_returned";
+  sendResult: "delivered" | "failed";
   deliveredAt: Date | null;
   failReason: string | null;
 };
@@ -28,8 +28,7 @@ export type NormalizedReport = {
 function mapReportStatus(status: string | number | undefined): NormalizedReport["sendResult"] {
   const value = String(status ?? "").trim();
   if (value === "0") return "delivered";
-  if (value === "1") return "report_failed";
-  return "report_not_returned";
+  return "failed";
 }
 
 export async function fetchLaafficReports(
@@ -86,20 +85,11 @@ export async function fetchLaafficReports(
           sendResult === "delivered" && report.receiveTime
             ? new Date(report.receiveTime)
             : null,
-        failReason: sendResult === "report_failed" ? "Laaffic delivery report failed" : null,
+        failReason: sendResult === "failed" ? "Laaffic delivery report failed" : null,
       });
     }
 
-    for (const messageId of batch) {
-      if (!returnedIds.has(messageId)) {
-        reports.set(messageId, {
-          messageId,
-          sendResult: "report_not_returned",
-          deliveredAt: null,
-          failReason: "Laaffic report not returned",
-        });
-      }
-    }
+    void returnedIds;
   }
 
   return reports;

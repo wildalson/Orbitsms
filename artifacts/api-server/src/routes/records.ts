@@ -14,7 +14,7 @@ async function refreshLaafficReportsForRecords(records: Array<{
   apiSecret: string | null;
 }>) {
   const candidates = records.filter((r) =>
-    ["submitted", "report_not_returned", "report_pending"].includes(r.record.sendResult),
+    r.record.sendResult === "submitted",
   );
   if (candidates.length === 0) return;
 
@@ -136,7 +136,7 @@ router.get("/records/stats", async (_req, res) => {
   const allRecords = await db.select().from(messageRecordsTable);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => ["rejected", "failed", "report_failed"].includes(r.sendResult)).length;
+  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
   const totalCost = allRecords.reduce((sum, r) => sum + Number(r.cost), 0);
   const latencies = allRecords.filter(r => r.deliveryLatency != null).map(r => r.deliveryLatency!);
   const avgLatencyMs = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
