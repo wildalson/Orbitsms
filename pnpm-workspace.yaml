@@ -71,12 +71,14 @@ autoInstallPeers: false
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
+  - lightningcss
   - msw
   - unrs-resolver
+  - '@tailwindcss/oxide'
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
-  "esbuild>@esbuild/darwin-arm64": "-"
+  # darwin-arm64 entries removed — running locally on macOS Apple Silicon
   "esbuild>@esbuild/darwin-x64": "-"
   "esbuild>@esbuild/freebsd-arm64": "-"
   "esbuild>@esbuild/freebsd-x64": "-"
@@ -102,7 +104,6 @@ overrides:
   "esbuild>@esbuild/android-x64": '-'
   "esbuild>@esbuild/openharmony-arm64": '-'
   "lightningcss>lightningcss-android-arm64": "-"
-  "lightningcss>lightningcss-darwin-arm64": "-"
   "lightningcss>lightningcss-darwin-x64": "-"
   "lightningcss>lightningcss-freebsd-x64": "-"
   "lightningcss>lightningcss-linux-arm-gnueabihf": "-"
@@ -112,7 +113,6 @@ overrides:
   "lightningcss>lightningcss-win32-arm64-msvc": "-"
   "lightningcss>lightningcss-win32-x64-msvc": "-"
   "@tailwindcss/oxide>@tailwindcss/oxide-android-arm64": "-"
-  "@tailwindcss/oxide>@tailwindcss/oxide-darwin-arm64": "-"
   "@tailwindcss/oxide>@tailwindcss/oxide-darwin-x64": "-"
   "@tailwindcss/oxide>@tailwindcss/oxide-freebsd-x64": "-"
   "@tailwindcss/oxide>@tailwindcss/oxide-linux-arm-gnueabihf": "-"
@@ -123,7 +123,6 @@ overrides:
   "@tailwindcss/oxide>@tailwindcss/oxide-linux-x64-musl": "-"
   "rollup>@rollup/rollup-android-arm-eabi": "-"
   "rollup>@rollup/rollup-android-arm64": "-"
-  "rollup>@rollup/rollup-darwin-arm64": "-"
   "rollup>@rollup/rollup-darwin-x64": "-"
   "rollup>@rollup/rollup-freebsd-arm64": "-"
   "rollup>@rollup/rollup-freebsd-x64": "-"
@@ -175,3 +174,6 @@ overrides:
   # Fix released as 4.18.0/4.18.1 — force all transitive dependents to patched version.
   # Bounded to <5 to avoid unintended future major upgrades.
   lodash: ">=4.18.0 <5"
+
+allowBuilds:
+  esbuild: true

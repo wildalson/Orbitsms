@@ -7,7 +7,11 @@ const router = Router();
 
 router.get("/billing", async (req, res) => {
   const parsed = ListBillingQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query parameters" });
+    return;
+  }
+  const params = parsed.data;
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;
 

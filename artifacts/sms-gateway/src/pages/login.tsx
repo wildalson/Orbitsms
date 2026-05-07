@@ -112,7 +112,7 @@ export default function LoginPage() {
               <span className="text-lg font-bold tracking-tight">OrbitSMS</span>
             </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              {mode === "login" ? "Back-stage management" : "Create account"}
+              {mode === "login" ? "SMS backend portal" : "Create account"}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
               {mode === "login" ? "Sign in to your operator account" : "Register a new operator account"}
@@ -127,12 +127,12 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Account Number</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your account number"
+                placeholder="Enter your username"
                 className="w-full bg-card border border-input rounded px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
                 required
               />

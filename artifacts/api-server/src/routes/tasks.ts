@@ -5,6 +5,7 @@ import { CreateTaskBody, ListTasksQueryParams } from "@workspace/api-zod";
 import crypto from "crypto";
 
 const router = Router();
+const RECORD_INSERT_CHUNK_SIZE = 5_000;
 
 function mapTask(t: typeof tasksTable.$inferSelect, productName: string) {
   return {
@@ -27,9 +28,23 @@ function mapTask(t: typeof tasksTable.$inferSelect, productName: string) {
 
 router.get("/tasks", async (req, res) => {
   const parsed = ListTasksQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query parameters" });
+    return;
+  }
+  const params = parsed.data;
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;
+
+  const conditions = [];
+  if (params.status) {
+    conditions.push(eq(tasksTable.status, params.status));
+  }
+  if (params.productId) {
+    conditions.push(eq(tasksTable.productId, params.productId));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const tasks = await db.select({
     task: tasksTable,
@@ -37,11 +52,12 @@ router.get("/tasks", async (req, res) => {
   })
     .from(tasksTable)
     .leftJoin(productsTable, eq(tasksTable.productId, productsTable.id))
+    .where(whereClause)
     .orderBy(desc(tasksTable.createdAt))
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
-  const total = await db.select().from(tasksTable);
+  const total = await db.select().from(tasksTable).where(whereClause);
 
   res.json({
     data: tasks.map(r => mapTask(r.task, r.productName ?? "")),
@@ -57,7 +73,8 @@ router.post("/tasks", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { name, productId, messageContent, senderId, recipients, scheduledAt } = parsed.data;
+  const { name, productId, messageContent, recipients, scheduledAt } = parsed.data;
+  const senderId = parsed.data.senderId?.trim() || "OrbitSMS";
 
   const [product] = await db.select().from(productsTable).where(eq(productsTable.id, productId));
   if (!product) {
@@ -83,28 +100,32 @@ router.post("/tasks", async (req, res) => {
   }).returning();
 
   const results = ["submitted", "delivered", "failed"] as const;
-  const recordValues = recipients.map((recipient) => {
-    const sendResult = results[Math.floor(Math.random() * results.length)];
-    const isDelivered = sendResult === "delivered";
-    return {
-      taskId: task.id,
-      productId,
-      recipient,
-      sendResult: sendResult as "submitted" | "delivered" | "failed",
-      failReason: sendResult === "failed" ? "Network error" : null,
-      deliveredAt: isDelivered ? new Date() : null,
-      deliveryLatency: isDelivered ? Math.floor(Math.random() * 20) + 2 : null,
-      cost: String(costPerSms),
-      messageId: crypto.randomBytes(8).toString("hex"),
-    };
-  });
+  let deliveredCount = 0;
+  let failedCount = 0;
 
-  if (recordValues.length > 0) {
+  for (let start = 0; start < recipients.length; start += RECORD_INSERT_CHUNK_SIZE) {
+    const chunk = recipients.slice(start, start + RECORD_INSERT_CHUNK_SIZE);
+    const recordValues = chunk.map((recipient) => {
+      const sendResult = results[Math.floor(Math.random() * results.length)];
+      const isDelivered = sendResult === "delivered";
+      if (isDelivered) deliveredCount += 1;
+      if (sendResult === "failed") failedCount += 1;
+
+      return {
+        taskId: task.id,
+        productId,
+        recipient,
+        sendResult,
+        failReason: sendResult === "failed" ? "Network error" : null,
+        deliveredAt: isDelivered ? new Date() : null,
+        deliveryLatency: isDelivered ? Math.floor(Math.random() * 20) + 2 : null,
+        cost: String(costPerSms),
+        messageId: crypto.randomBytes(8).toString("hex"),
+      };
+    });
+
     await db.insert(messageRecordsTable).values(recordValues);
   }
-
-  const deliveredCount = recordValues.filter(r => r.sendResult === "delivered").length;
-  const failedCount = recordValues.filter(r => r.sendResult === "failed").length;
 
   const [updated] = await db.update(tasksTable).set({
     status: "completed",

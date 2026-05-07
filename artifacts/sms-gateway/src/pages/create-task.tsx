@@ -98,8 +98,15 @@ export default function CreateTaskPage() {
     if (!messageContent.trim()) { setError("Enter a message"); return; }
     setError("");
     try {
+      const trimmedSenderId = senderId.trim();
       await createMut.mutateAsync({
-        data: { name: taskName, productId, messageContent, senderId: senderId.trim() || undefined, recipients },
+        data: {
+          name: taskName,
+          productId,
+          messageContent,
+          ...(trimmedSenderId ? { senderId: trimmedSenderId } : {}),
+          recipients,
+        },
       });
       qc.invalidateQueries({ queryKey: getListTasksQueryKey() });
       navigate("/tasks");

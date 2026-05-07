@@ -11,6 +11,7 @@ A full-stack SMS Gateway management platform for the Philippines (Chinese SMS ag
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Health check: `GET /api/health`
 
 Demo credentials:
 - Clients: `demo1`–`demo5` / `123456`
