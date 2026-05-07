@@ -192,6 +192,9 @@ importers:
       pino-http:
         specifier: ^10
         version: 10.5.0
+      smpp:
+        specifier: 0.6.0-rc.4
+        version: 0.6.0-rc.4
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10
@@ -2256,6 +2259,10 @@ packages:
     resolution: {integrity: sha512-JGG8pvDi2C+JxidYdIwQDyS/CgcrIdh18cvgxcBge3wSHRQOrooMD3GlFBcmMJAN9M42SAZjDp5zv1dglJjwww==}
     engines: {node: '>=20'}
 
+  findhit-proxywrap@0.3.13:
+    resolution: {integrity: sha512-gI1KV7yCuMHtveiWbQUJZheNOukScz+15MTtrH/MK5RJ77JjYeJ1DegUfkBnlPvDx5NhZESl48zE/MwpWZ1LXQ==}
+    engines: {node: '>= 0.8'}
+
   forwarded@0.2.0:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
@@ -2960,6 +2967,10 @@ packages:
   slash@5.1.0:
     resolution: {integrity: sha512-ZA6oR3T/pEyuqwMgAKT0/hAv8oAXckzbkmR0UkUosQ+Mc4RxGoJkRmwHgHufaenlyAgE1Mxgpdcrf75y6XcnDg==}
     engines: {node: '>=14.16'}
+
+  smpp@0.6.0-rc.4:
+    resolution: {integrity: sha512-WDa0XBRQkkJJPcKRtoC9C0cnzhopFIK9/zFcWBOy3sD4xZr3i/Dt3yX+XRparKzpp9QkqRr2/8EYt8JNGxu85w==}
+    engines: {node: '>=4'}
 
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
@@ -4913,6 +4924,10 @@ snapshots:
       locate-path: 8.0.0
       unicorn-magic: 0.3.0
 
+  findhit-proxywrap@0.3.13:
+    dependencies:
+      lodash: 4.18.1
+
   forwarded@0.2.0: {}
 
   frac@1.1.2: {}
@@ -5604,6 +5619,12 @@ snapshots:
   signal-exit@4.1.0: {}
 
   slash@5.1.0: {}
+
+  smpp@0.6.0-rc.4:
+    dependencies:
+      findhit-proxywrap: 0.3.13
+      iconv-lite: 0.7.2
+      safer-buffer: 2.1.2
 
   sonic-boom@4.2.1:
     dependencies:

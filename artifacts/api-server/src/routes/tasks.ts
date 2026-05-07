@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, tasksTable, productsTable, messageRecordsTable, billingRecordsTable } from "@workspace/db";
+import { db, tasksTable, productsTable, messageRecordsTable, billingRecordsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { CreateTaskBody, ListTasksQueryParams } from "@workspace/api-zod";
+import { sendMessagesOverSmpp } from "../lib/smpp-client";
 import crypto from "crypto";
 
 const router = Router();
@@ -76,11 +77,20 @@ router.post("/tasks", async (req, res) => {
   const { name, productId, messageContent, recipients, scheduledAt } = parsed.data;
   const senderId = parsed.data.senderId?.trim() || "OrbitSMS";
 
-  const [product] = await db.select().from(productsTable).where(eq(productsTable.id, productId));
-  if (!product) {
+  const [productRow] = await db.select({
+    product: productsTable,
+    user: usersTable,
+  })
+    .from(productsTable)
+    .leftJoin(usersTable, eq(productsTable.userId, usersTable.id))
+    .where(eq(productsTable.id, productId));
+
+  if (!productRow) {
     res.status(400).json({ error: "Product not found" });
     return;
   }
+  const product = productRow.product;
+  const owner = productRow.user;
 
   const costPerSms = 0.005;
   const totalCost = recipients.length * costPerSms;
@@ -99,14 +109,40 @@ router.post("/tasks", async (req, res) => {
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
   }).returning();
 
-  const results = ["submitted", "delivered", "failed"] as const;
+  const hasSmppCredentials = !!(
+    owner?.smppHost &&
+    owner.smppPort &&
+    owner.smppSystemId &&
+    owner.smppPassword
+  );
+  const smppResults = hasSmppCredentials
+    ? await sendMessagesOverSmpp(
+        {
+          host: owner.smppHost!,
+          port: Number(owner.smppPort),
+          systemId: owner.smppSystemId!,
+          password: owner.smppPassword!,
+          appId: owner.httpApiKey,
+        },
+        recipients.map((recipient) => ({
+          recipient,
+          content: messageContent,
+          senderId: parsed.data.senderId?.trim() ?? "",
+        })),
+      )
+    : null;
+
+  const simulatedResults = ["submitted", "delivered", "failed"] as const;
   let deliveredCount = 0;
   let failedCount = 0;
 
   for (let start = 0; start < recipients.length; start += RECORD_INSERT_CHUNK_SIZE) {
     const chunk = recipients.slice(start, start + RECORD_INSERT_CHUNK_SIZE);
-    const recordValues = chunk.map((recipient) => {
-      const sendResult = results[Math.floor(Math.random() * results.length)];
+    const recordValues = chunk.map((recipient, index) => {
+      const smppResult = smppResults?.[start + index];
+      const sendResult =
+        smppResult?.status ??
+        simulatedResults[Math.floor(Math.random() * simulatedResults.length)];
       const isDelivered = sendResult === "delivered";
       if (isDelivered) deliveredCount += 1;
       if (sendResult === "failed") failedCount += 1;
@@ -116,11 +152,11 @@ router.post("/tasks", async (req, res) => {
         productId,
         recipient,
         sendResult,
-        failReason: sendResult === "failed" ? "Network error" : null,
+        failReason: sendResult === "failed" ? (smppResult?.error ?? "Network error") : null,
         deliveredAt: isDelivered ? new Date() : null,
         deliveryLatency: isDelivered ? Math.floor(Math.random() * 20) + 2 : null,
         cost: String(costPerSms),
-        messageId: crypto.randomBytes(8).toString("hex"),
+        messageId: smppResult?.messageId ?? crypto.randomBytes(8).toString("hex"),
       };
     });
 
