@@ -295,7 +295,7 @@ export const CreateTaskBody = zod.object({
   name: zod.string(),
   productId: zod.number(),
   messageContent: zod.string(),
-  senderId: zod.string(),
+  senderId: zod.string().optional(),
   recipients: zod.array(zod.string()),
   scheduledAt: zod.coerce.date().nullish(),
 });

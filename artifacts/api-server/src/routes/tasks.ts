@@ -27,9 +27,23 @@ function mapTask(t: typeof tasksTable.$inferSelect, productName: string) {
 
 router.get("/tasks", async (req, res) => {
   const parsed = ListTasksQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query parameters" });
+    return;
+  }
+  const params = parsed.data;
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;
+
+  const conditions = [];
+  if (params.status) {
+    conditions.push(eq(tasksTable.status, params.status));
+  }
+  if (params.productId) {
+    conditions.push(eq(tasksTable.productId, params.productId));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const tasks = await db.select({
     task: tasksTable,
@@ -37,11 +51,12 @@ router.get("/tasks", async (req, res) => {
   })
     .from(tasksTable)
     .leftJoin(productsTable, eq(tasksTable.productId, productsTable.id))
+    .where(whereClause)
     .orderBy(desc(tasksTable.createdAt))
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
-  const total = await db.select().from(tasksTable);
+  const total = await db.select().from(tasksTable).where(whereClause);
 
   res.json({
     data: tasks.map(r => mapTask(r.task, r.productName ?? "")),
@@ -57,7 +72,8 @@ router.post("/tasks", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { name, productId, messageContent, senderId, recipients, scheduledAt } = parsed.data;
+  const { name, productId, messageContent, recipients, scheduledAt } = parsed.data;
+  const senderId = parsed.data.senderId?.trim() || "OrbitSMS";
 
   const [product] = await db.select().from(productsTable).where(eq(productsTable.id, productId));
   if (!product) {

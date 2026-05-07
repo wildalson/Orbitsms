@@ -207,7 +207,7 @@ export interface CreateTaskBody {
   name: string;
   productId: number;
   messageContent: string;
-  senderId: string;
+  senderId?: string;
   recipients: string[];
   scheduledAt?: string | null;
 }

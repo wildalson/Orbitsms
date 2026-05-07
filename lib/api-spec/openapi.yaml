@@ -25,7 +25,7 @@ tags:
     description: Billing and financial records
 
 paths:
-  /healthz:
+  /health:
     get:
       operationId: healthCheck
       tags: [health]
@@ -744,7 +744,7 @@ components:
           type: string
           format: date-time
           nullable: true
-      required: [name, productId, messageContent, senderId, recipients]
+      required: [name, productId, messageContent, recipients]
 
     MessageRecord:
       type: object
