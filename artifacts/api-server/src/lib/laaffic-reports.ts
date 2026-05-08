@@ -55,18 +55,18 @@ export async function fetchLaafficReports(
       .update(`${credentials.apiKey}${credentials.apiSecret}${timestamp}`)
       .digest("hex");
 
-    const response = await fetch("https://api.laaffic.com/v3/getReport", {
-      method: "POST",
+    const url = new URL("https://api.laaffic.com/v3/getReport");
+    url.searchParams.set("appId", credentials.appId);
+    url.searchParams.set("msgIds", batch.join(","));
+
+    const response = await fetch(url, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json;charset=UTF-8",
         "Api-Key": credentials.apiKey,
         Timestamp: timestamp,
         Sign: sign,
       },
-      body: JSON.stringify({
-        appId: credentials.appId,
-        msgIds: batch.join(","),
-      }),
     });
 
     if (!response.ok) continue;
