@@ -5,6 +5,14 @@ import { CreateChannelBody } from "@workspace/api-zod";
 
 const router = Router();
 
+function requireAdminUser(req: any, res: any) {
+  if (req.user?.role !== "admin") {
+    res.status(403).json({ error: "Forbidden: admin only" });
+    return false;
+  }
+  return true;
+}
+
 function mapChannel(c: typeof channelsTable.$inferSelect) {
   return {
     id: c.id,
@@ -21,12 +29,14 @@ function mapChannel(c: typeof channelsTable.$inferSelect) {
   };
 }
 
-router.get("/channels", async (_req, res) => {
+router.get("/channels", async (req, res) => {
+  if (!requireAdminUser(req, res)) return;
   const channels = await db.select().from(channelsTable);
   res.json(channels.map(mapChannel));
 });
 
 router.post("/channels", async (req, res) => {
+  if (!requireAdminUser(req, res)) return;
   const parsed = CreateChannelBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -48,6 +58,7 @@ router.post("/channels", async (req, res) => {
 });
 
 router.get("/channels/:id", async (req, res) => {
+  if (!requireAdminUser(req, res)) return;
   const id = parseInt(req.params.id);
   const [channel] = await db.select().from(channelsTable).where(eq(channelsTable.id, id));
   if (!channel) {
@@ -58,6 +69,7 @@ router.get("/channels/:id", async (req, res) => {
 });
 
 router.put("/channels/:id", async (req, res) => {
+  if (!requireAdminUser(req, res)) return;
   const id = parseInt(req.params.id);
   const parsed = CreateChannelBody.safeParse(req.body);
   if (!parsed.success) {
@@ -83,6 +95,7 @@ router.put("/channels/:id", async (req, res) => {
 });
 
 router.delete("/channels/:id", async (req, res) => {
+  if (!requireAdminUser(req, res)) return;
   const id = parseInt(req.params.id);
   await db.delete(channelsTable).where(eq(channelsTable.id, id));
   res.status(204).end();

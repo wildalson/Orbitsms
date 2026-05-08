@@ -39,6 +39,10 @@ router.get("/tasks", async (req, res) => {
   const pageSize = params.pageSize ?? 20;
 
   const conditions = [];
+  const user = (req as any).user;
+  if (user.role !== "admin") {
+    conditions.push(eq(productsTable.userId, user.id));
+  }
   if (params.status) {
     conditions.push(eq(tasksTable.status, params.status));
   }
@@ -59,7 +63,10 @@ router.get("/tasks", async (req, res) => {
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
-  const total = await db.select().from(tasksTable).where(whereClause);
+  const total = await db.select({ id: tasksTable.id })
+    .from(tasksTable)
+    .leftJoin(productsTable, eq(tasksTable.productId, productsTable.id))
+    .where(whereClause);
 
   res.json({
     data: tasks.map(r => mapTask(r.task, r.productName ?? "")),
@@ -92,6 +99,11 @@ router.post("/tasks", async (req, res) => {
   }
   const product = productRow.product;
   const owner = productRow.user;
+  const user = (req as any).user;
+  if (user.role !== "admin" && product.userId !== user.id) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   const costPerSms = Number(owner?.smsRate ?? 0.25);
 
@@ -179,7 +191,11 @@ router.get("/tasks/:id", async (req, res) => {
     productName: productsTable.name,
   }).from(tasksTable)
     .leftJoin(productsTable, eq(tasksTable.productId, productsTable.id))
-    .where(eq(tasksTable.id, id));
+    .where(
+      (req as any).user.role === "admin"
+        ? eq(tasksTable.id, id)
+        : and(eq(tasksTable.id, id), eq(productsTable.userId, (req as any).user.id)),
+    );
 
   if (!row) {
     res.status(404).json({ error: "Not found" });
@@ -198,6 +214,18 @@ router.get("/tasks/:id", async (req, res) => {
 
 router.delete("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
+  const [row] = await db.select({ taskId: tasksTable.id })
+    .from(tasksTable)
+    .leftJoin(productsTable, eq(tasksTable.productId, productsTable.id))
+    .where(
+      (req as any).user.role === "admin"
+        ? eq(tasksTable.id, id)
+        : and(eq(tasksTable.id, id), eq(productsTable.userId, (req as any).user.id)),
+    );
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   await db.delete(tasksTable).where(eq(tasksTable.id, id));
   res.status(204).end();
 });

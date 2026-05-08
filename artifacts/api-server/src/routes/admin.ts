@@ -4,39 +4,15 @@ import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { detectPhilippineOperator } from "../lib/ph-operators";
 import { fetchLaafficReports } from "../lib/laaffic-reports";
 import { chargeDeliveredRecords, refreshTaskCounters } from "../lib/delivery-charging";
-import crypto from "crypto";
+import { hashPassword, requireAdmin } from "../lib/auth";
 
 const router = Router();
-
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + "sms_gateway_salt").digest("hex");
-}
-
-async function requireAdmin(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  try {
-    const token = authHeader.slice(7);
-    const decoded = Buffer.from(token, "base64").toString("utf-8");
-    const userId = parseInt(decoded.split(":")[0]);
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-    if (!user || user.role !== "admin") {
-      res.status(403).json({ error: "Forbidden: admin only" });
-      return null;
-    }
-    return userId;
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-    return null;
-  }
-}
 
 function formatClient(c: any) {
   return {
     ...c,
+    password: undefined,
+    smppPassword: c.smppPassword ? "configured" : null,
     smsRate: Number(c.smsRate),
     balance: Number(c.balance),
     emailVerified: c.emailVerified ?? false,
@@ -123,7 +99,7 @@ router.post("/admin/clients", async (req, res) => {
   const [user] = await db.insert(usersTable).values({
     username,
     email,
-    password: hashPassword(password),
+    password: await hashPassword(password),
     phone: phone || null,
     companyName: companyName || null,
     role: "client",
@@ -208,11 +184,13 @@ router.put("/admin/clients/:id", async (req, res) => {
   if (smsRate !== undefined) updates.smsRate = String(smsRate);
   if (status !== undefined) updates.status = status;
   if (permissions !== undefined) updates.permissions = JSON.stringify(permissions);
-  if (password) updates.password = hashPassword(password);
+  if (password) updates.password = await hashPassword(password);
   if (smppHost !== undefined) updates.smppHost = smppHost || null;
   if (smppPort !== undefined) updates.smppPort = smppPort || null;
   if (smppSystemId !== undefined) updates.smppSystemId = smppSystemId || null;
-  if (smppPassword !== undefined) updates.smppPassword = smppPassword || null;
+  if (smppPassword !== undefined && smppPassword !== "" && smppPassword !== "configured") {
+    updates.smppPassword = smppPassword;
+  }
   if (httpApiKey !== undefined) updates.httpApiKey = httpApiKey || null;
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();

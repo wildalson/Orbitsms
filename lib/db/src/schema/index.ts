@@ -4,3 +4,4 @@ export * from "./channels";
 export * from "./tasks";
 export * from "./message_records";
 export * from "./billing_records";
+export * from "./login_audit";

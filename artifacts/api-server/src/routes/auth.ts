@@ -1,18 +1,21 @@
 import { Router } from "express";
-import { db, usersTable } from "@workspace/db";
+import { db, loginAuditTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { LoginBody, RegisterBody } from "@workspace/api-zod";
-import crypto from "crypto";
+import {
+  generateToken,
+  getAuthUserFromRequest,
+  getClientIp,
+  hashPassword,
+  isLegacyPasswordHash,
+  verifyPassword,
+} from "../lib/auth";
 
 const router = Router();
 
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + "sms_gateway_salt").digest("hex");
-}
-
-function generateToken(userId: number): string {
-  return Buffer.from(`${userId}:${Date.now()}:${crypto.randomBytes(16).toString("hex")}`).toString("base64");
-}
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPTS = 8;
 
 function formatUser(user: any) {
   return {
@@ -27,32 +30,36 @@ function formatUser(user: any) {
     balance: Number(user.balance),
     emailVerified: user.emailVerified ?? false,
     phoneVerified: user.phoneVerified ?? false,
-    smppHost: user.smppHost ?? null,
+    smppHost: user.smppHost ? "configured" : null,
     smppPort: user.smppPort ?? null,
-    smppSystemId: user.smppSystemId ?? null,
-    smppPassword: user.smppPassword ?? null,
+    smppSystemId: user.smppSystemId ? "configured" : null,
+    smppPassword: user.smppPassword ? "configured" : null,
     httpApiKey: user.httpApiKey ?? null,
     createdAt: user.createdAt,
   };
 }
 
-async function getAuthUser(req: any, res: any): Promise<any | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
+function checkLoginRateLimit(key: string) {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || entry.resetAt < now) {
+    loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return true;
   }
-  try {
-    const token = authHeader.slice(7);
-    const decoded = Buffer.from(token, "base64").toString("utf-8");
-    const userId = parseInt(decoded.split(":")[0]);
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-    if (!user) { res.status(401).json({ error: "Unauthorized" }); return null; }
-    return user;
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-    return null;
-  }
+  entry.count += 1;
+  return entry.count <= MAX_LOGIN_ATTEMPTS;
+}
+
+async function auditLogin(req: any, username: string, success: boolean, user: any | null, reason?: string) {
+  await db.insert(loginAuditTable).values({
+    userId: user?.id ?? null,
+    username,
+    success,
+    role: user?.role ?? null,
+    ipAddress: getClientIp(req),
+    userAgent: req.headers["user-agent"] ?? null,
+    reason: reason ?? null,
+  });
 }
 
 // In-memory OTP store: key = `${userId}:${type}`, value = {otp, expires}
@@ -65,20 +72,37 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
   const { username, password } = parsed.data;
+  const rateKey = `${getClientIp(req)}:${username.toLowerCase()}`;
+  if (!checkLoginRateLimit(rateKey)) {
+    await auditLogin(req, username, false, null, "rate_limited");
+    res.status(429).json({ error: "Too many login attempts. Please try again later." });
+    return;
+  }
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username));
-  if (!user || user.password !== hashPassword(password)) {
+  if (!user || !(await verifyPassword(password, user.password))) {
+    await auditLogin(req, username, false, user ?? null, "invalid_credentials");
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
   if (user.status === "suspended") {
+    await auditLogin(req, username, false, user, "suspended");
     res.status(403).json({ error: "Account suspended. Please contact your administrator." });
     return;
   }
+  if (isLegacyPasswordHash(user.password)) {
+    await db.update(usersTable).set({ password: await hashPassword(password) }).where(eq(usersTable.id, user.id));
+  }
+  await auditLogin(req, username, true, user);
   const token = generateToken(user.id);
   res.json({ token, user: formatUser(user) });
 });
 
 router.post("/auth/register", async (req, res) => {
+  if (process.env.ENABLE_PUBLIC_REGISTRATION !== "true") {
+    res.status(403).json({ error: "Public registration is disabled. Please contact the administrator." });
+    return;
+  }
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -92,7 +116,7 @@ router.post("/auth/register", async (req, res) => {
   }
   const [user] = await db.insert(usersTable).values({
     username,
-    password: hashPassword(password),
+    password: await hashPassword(password),
     email,
     phone: phone ?? null,
     role: "client",
@@ -104,21 +128,21 @@ router.post("/auth/register", async (req, res) => {
 });
 
 router.get("/auth/me", async (req, res) => {
-  const user = await getAuthUser(req, res);
-  if (!user) return;
+  const user = await getAuthUserFromRequest(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   res.json(formatUser(user));
 });
 
 // Profile routes
 router.get("/profile", async (req, res) => {
-  const user = await getAuthUser(req, res);
-  if (!user) return;
+  const user = await getAuthUserFromRequest(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   res.json(formatUser(user));
 });
 
 router.put("/profile", async (req, res) => {
-  const user = await getAuthUser(req, res);
-  if (!user) return;
+  const user = await getAuthUserFromRequest(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { companyName, email, phone, currentPassword, newPassword } = req.body;
   const updates: Record<string, any> = {};
@@ -149,9 +173,9 @@ router.put("/profile", async (req, res) => {
 
   if (newPassword) {
     if (!currentPassword) { res.status(400).json({ error: "Current password is required" }); return; }
-    if (user.password !== hashPassword(currentPassword)) { res.status(400).json({ error: "Current password is incorrect" }); return; }
-    if (newPassword.length < 6) { res.status(400).json({ error: "New password must be at least 6 characters" }); return; }
-    updates.password = hashPassword(newPassword);
+    if (!(await verifyPassword(currentPassword, user.password))) { res.status(400).json({ error: "Current password is incorrect" }); return; }
+    if (newPassword.length < 10) { res.status(400).json({ error: "New password must be at least 10 characters" }); return; }
+    updates.password = await hashPassword(newPassword);
   }
 
   if (Object.keys(updates).length === 0) {
@@ -164,8 +188,8 @@ router.put("/profile", async (req, res) => {
 });
 
 router.post("/profile/send-otp", async (req, res) => {
-  const user = await getAuthUser(req, res);
-  if (!user) return;
+  const user = await getAuthUserFromRequest(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { type } = req.body;
   if (type !== "email" && type !== "phone") {
@@ -190,14 +214,12 @@ router.post("/profile/send-otp", async (req, res) => {
   const destination = type === "email" ? user.email : user.phone;
   res.json({
     message: `Verification code sent to ${destination}`,
-    // Development only — remove this in production:
-    devOtp: otp,
   });
 });
 
 router.post("/profile/verify-otp", async (req, res) => {
-  const user = await getAuthUser(req, res);
-  if (!user) return;
+  const user = await getAuthUserFromRequest(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { type, otp } = req.body;
   if (!type || !otp) {

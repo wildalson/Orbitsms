@@ -16,6 +16,10 @@ router.get("/billing", async (req, res) => {
   const pageSize = params.pageSize ?? 20;
 
   const conditions = [];
+  const user = (req as any).user;
+  if (user.role !== "admin") {
+    conditions.push(eq(productsTable.userId, user.id));
+  }
   if (params.productId) {
     conditions.push(eq(billingRecordsTable.productId, params.productId));
   }
@@ -45,6 +49,7 @@ router.get("/billing", async (req, res) => {
 
   const totalRows = await db.select({ count: sql<number>`count(*)` })
     .from(billingRecordsTable)
+    .leftJoin(productsTable, eq(billingRecordsTable.productId, productsTable.id))
     .where(whereClause);
 
   res.json({
@@ -67,16 +72,25 @@ router.get("/billing", async (req, res) => {
   });
 });
 
-router.get("/billing/summary", async (_req, res) => {
-  const bills = await db.select().from(billingRecordsTable);
-  const allRecords = await db.select().from(messageRecordsTable);
+router.get("/billing/summary", async (req, res) => {
+  const user = (req as any).user;
+  const bills = await db.select({ bill: billingRecordsTable })
+    .from(billingRecordsTable)
+    .leftJoin(productsTable, eq(billingRecordsTable.productId, productsTable.id))
+    .where(user.role === "admin" ? undefined : eq(productsTable.userId, user.id));
+  const allRecords = await db.select({ record: messageRecordsTable })
+    .from(messageRecordsTable)
+    .leftJoin(productsTable, eq(messageRecordsTable.productId, productsTable.id))
+    .where(user.role === "admin" ? undefined : eq(productsTable.userId, user.id));
 
-  const smsBills = bills.filter((b) => b.type === "sms");
+  const billRows = bills.map((r) => r.bill);
+  const recordRows = allRecords.map((r) => r.record);
+  const smsBills = billRows.filter((b) => b.type === "sms");
   const totalExpense = smsBills.reduce((sum, b) => sum + Number(b.amount), 0);
   const totalMessages = smsBills.reduce((sum, b) => sum + b.messageCount, 0);
-  const totalSent = allRecords.length;
-  const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
+  const totalSent = recordRows.length;
+  const totalDelivered = recordRows.filter(r => r.sendResult === "delivered").length;
+  const totalFailed = recordRows.filter(r => r.sendResult === "failed").length;
 
   res.json({
     totalExpense: Math.round(totalExpense * 10000) / 10000,

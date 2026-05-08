@@ -60,6 +60,10 @@ router.get("/records", async (req, res) => {
   const pageSize = params.pageSize ?? 20;
 
   const conditions = [];
+  const user = (req as any).user;
+  if (user.role !== "admin") {
+    conditions.push(eq(productsTable.userId, user.id));
+  }
   if (params.sendResult) {
     conditions.push(eq(messageRecordsTable.sendResult, params.sendResult));
   } else {
@@ -118,6 +122,7 @@ router.get("/records", async (req, res) => {
 
   const totalRows = await db.select({ count: sql<number>`count(*)` })
     .from(messageRecordsTable)
+    .leftJoin(productsTable, eq(messageRecordsTable.productId, productsTable.id))
     .where(whereClause);
 
   res.json({
@@ -145,15 +150,22 @@ router.get("/records", async (req, res) => {
   });
 });
 
-router.get("/records/stats", async (_req, res) => {
-  const allRecords = await db.select().from(messageRecordsTable);
-  const totalSent = allRecords.length;
-  const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
-  const totalCost = allRecords
+router.get("/records/stats", async (req, res) => {
+  const user = (req as any).user;
+  const allRecords = await db.select({
+    record: messageRecordsTable,
+  })
+    .from(messageRecordsTable)
+    .leftJoin(productsTable, eq(messageRecordsTable.productId, productsTable.id))
+    .where(user.role === "admin" ? undefined : eq(productsTable.userId, user.id));
+  const rows = allRecords.map((r) => r.record);
+  const totalSent = rows.length;
+  const totalDelivered = rows.filter(r => r.sendResult === "delivered").length;
+  const totalFailed = rows.filter(r => r.sendResult === "failed").length;
+  const totalCost = rows
     .filter(r => r.sendResult === "delivered")
     .reduce((sum, r) => sum + Number(r.cost), 0);
-  const latencies = allRecords.filter(r => r.deliveryLatency != null).map(r => r.deliveryLatency!);
+  const latencies = rows.filter(r => r.deliveryLatency != null).map(r => r.deliveryLatency!);
   const avgLatencyMs = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
 
   res.json({
