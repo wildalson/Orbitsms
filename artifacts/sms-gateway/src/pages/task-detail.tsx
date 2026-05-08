@@ -3,13 +3,11 @@ import { useGetTask, useListRecords, getListRecordsQueryKey } from "@workspace/a
 import { ArrowLeft, CheckCircle, XCircle, Send, TrendingUp } from "lucide-react";
 
 const RESULT_STYLES: Record<string, string> = {
-  submitted: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered: "bg-green-500/10 text-green-400 border-green-500/20",
   failed: "bg-red-500/10 text-red-300 border-red-500/20",
 };
 
 const RESULT_LABELS: Record<string, string> = {
-  submitted: "Submitted",
   delivered: "Delivered",
   failed: "Failed",
 };

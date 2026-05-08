@@ -25,7 +25,10 @@ router.get("/dashboard/summary", async (req, res) => {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const allRecords = await db.select().from(messageRecordsTable);
+  const userProducts = await db.select().from(productsTable).where(eq(productsTable.userId, userId));
+  const userProductIds = new Set(userProducts.map((p) => p.id));
+  const allRecords = (await db.select().from(messageRecordsTable))
+    .filter((record) => userProductIds.has(record.productId));
   const todayRecords = allRecords.filter(r => r.createdAt >= todayStart);
   const monthRecords = allRecords.filter(r => r.createdAt >= monthStart);
 
@@ -35,8 +38,7 @@ router.get("/dashboard/summary", async (req, res) => {
   const todayFailed = todayRecords.filter(r => r.sendResult === "failed").length;
   const successRate = todaySent > 0 ? Math.round((todayDelivered / todaySent) * 1000) / 10 : 0;
 
-  const products = await db.select().from(productsTable).where(eq(productsTable.userId, userId));
-  const productBalances = products.map(p => ({
+  const productBalances = userProducts.map(p => ({
     productId: p.id,
     productName: p.name,
     balance: Number(p.balance),

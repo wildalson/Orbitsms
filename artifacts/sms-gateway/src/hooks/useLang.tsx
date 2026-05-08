@@ -49,7 +49,6 @@ const T: Translations = {
   completed:        { en: "Completed",            zh: "已完成" },
   failed:           { en: "Failed",               zh: "失败" },
   delivered:        { en: "Delivered",            zh: "已送达" },
-  submitted:        { en: "Submitted",            zh: "已提交" },
 
   // Dashboard
   welcomeBack:      { en: "Welcome back",         zh: "欢迎回来" },

@@ -3,6 +3,7 @@ import { db, usersTable, messageRecordsTable, tasksTable, productsTable, billing
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { detectPhilippineOperator } from "../lib/ph-operators";
 import { fetchLaafficReports } from "../lib/laaffic-reports";
+import { chargeDeliveredRecords, refreshTaskCounters } from "../lib/delivery-charging";
 import crypto from "crypto";
 
 const router = Router();
@@ -57,7 +58,9 @@ router.get("/admin/stats", async (req, res) => {
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
   const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
-  const totalRevenue = allRecords.reduce((s, r) => s + Number(r.cost), 0);
+  const totalRevenue = allRecords
+    .filter((r) => r.sendResult === "delivered")
+    .reduce((s, r) => s + Number(r.cost), 0);
 
   res.json({
     totalClients,
@@ -389,6 +392,13 @@ router.get("/admin/records", async (req, res) => {
       row.record.failReason = report.failReason;
     }
   }
+
+  await chargeDeliveredRecords(
+    records
+      .filter((row) => row.record.sendResult === "delivered")
+      .map((row) => row.record.id),
+  );
+  await refreshTaskCounters(records.map((row) => row.record.taskId));
 
   const totalRows = await db.select({ count: sql<number>`count(*)` })
     .from(messageRecordsTable)

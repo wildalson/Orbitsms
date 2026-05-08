@@ -14,13 +14,11 @@ const PERM_LABELS: Record<string, string> = {
 };
 
 const RESULT_STYLES: Record<string, string> = {
-  submitted: "bg-blue-500/10 text-blue-400",
   delivered: "bg-green-500/10 text-green-400",
   failed: "bg-red-500/10 text-red-300",
 };
 
 const RESULT_LABELS: Record<string, string> = {
-  submitted: "Submitted",
   delivered: "Delivered",
   failed: "Failed",
 };

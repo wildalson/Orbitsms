@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useLang } from "@/hooks/useLang";
 
 const RESULT_STYLES: Record<string, string> = {
-  submitted:      "bg-blue-500/10 text-blue-400 border-blue-500/20",
   delivered:      "bg-green-500/10 text-green-400 border-green-500/20",
   failed:         "bg-red-500/10 text-red-300 border-red-500/20",
 };
@@ -40,7 +39,6 @@ export default function RecordsPage() {
   const totalPages = data ? Math.ceil(data.total / pageSize) : 1;
 
   const RESULT_LABELS: Record<string, string> = {
-    submitted:      t("submitted"),
     delivered:      t("delivered"),
     failed:         t("failed"),
   };
@@ -87,7 +85,6 @@ export default function RecordsPage() {
           className="bg-card border border-border rounded px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary/50"
         >
           <option value="">{t("sendResult")}</option>
-          <option value="submitted">{t("submitted")}</option>
           <option value="delivered">{t("delivered")}</option>
           <option value="failed">{t("failed")}</option>
         </select>

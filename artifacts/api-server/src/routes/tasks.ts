@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db, tasksTable, productsTable, messageRecordsTable, billingRecordsTable, usersTable } from "@workspace/db";
+import { db, tasksTable, productsTable, messageRecordsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { CreateTaskBody, ListTasksQueryParams } from "@workspace/api-zod";
 import { sendMessagesOverLaafficHttp } from "../lib/laaffic-reports";
+import { chargeDeliveredRecords, refreshTaskCounters } from "../lib/delivery-charging";
 import crypto from "crypto";
 
 const router = Router();
@@ -93,7 +94,6 @@ router.post("/tasks", async (req, res) => {
   const owner = productRow.user;
 
   const costPerSms = Number(owner?.smsRate ?? 0.25);
-  const totalCost = recipients.length * costPerSms;
 
   const [task] = await db.insert(tasksTable).values({
     productId,
@@ -105,7 +105,7 @@ router.post("/tasks", async (req, res) => {
     sentCount: recipients.length,
     deliveredCount: 0,
     failedCount: 0,
-    cost: String(totalCost),
+    cost: "0",
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
   }).returning();
 
@@ -128,19 +128,15 @@ router.post("/tasks", async (req, res) => {
       )
     : null;
 
-  const simulatedResults = ["submitted", "delivered", "failed"] as const;
   let deliveredCount = 0;
   let failedCount = 0;
+  const deliveredRecordIds: number[] = [];
 
   for (let start = 0; start < recipients.length; start += RECORD_INSERT_CHUNK_SIZE) {
     const chunk = recipients.slice(start, start + RECORD_INSERT_CHUNK_SIZE);
     const recordValues = chunk.map((recipient, index) => {
       const providerResult = providerResults?.[start + index];
-      const sendResult =
-        providerResult?.status ??
-        simulatedResults[Math.floor(Math.random() * simulatedResults.length)];
-      const isDelivered = sendResult === "delivered";
-      if (isDelivered) deliveredCount += 1;
+      const sendResult = providerResult?.status ?? "failed";
       if (sendResult === "failed") failedCount += 1;
 
       return {
@@ -149,14 +145,19 @@ router.post("/tasks", async (req, res) => {
         recipient,
         sendResult,
         failReason: sendResult === "failed" ? (providerResult?.error ?? "Network error") : null,
-        deliveredAt: isDelivered ? new Date() : null,
-        deliveryLatency: isDelivered ? Math.floor(Math.random() * 20) + 2 : null,
+        deliveredAt: null,
+        deliveryLatency: null,
         cost: String(costPerSms),
         messageId: providerResult?.messageId ?? crypto.randomBytes(8).toString("hex"),
       };
     });
 
-    await db.insert(messageRecordsTable).values(recordValues);
+    const insertedRecords = await db.insert(messageRecordsTable).values(recordValues).returning();
+    deliveredRecordIds.push(
+      ...insertedRecords
+        .filter((record) => record.sendResult === "delivered")
+        .map((record) => record.id),
+    );
   }
 
   const [updated] = await db.update(tasksTable).set({
@@ -165,14 +166,8 @@ router.post("/tasks", async (req, res) => {
     failedCount,
   }).where(eq(tasksTable.id, task.id)).returning();
 
-  await db.insert(billingRecordsTable).values({
-    productId,
-    taskId: task.id,
-    type: "sms",
-    amount: String(totalCost),
-    messageCount: recipients.length,
-    description: `SMS task: ${name}`,
-  });
+  await chargeDeliveredRecords(deliveredRecordIds);
+  await refreshTaskCounters([task.id]);
 
   res.status(201).json(mapTask(updated, product.name));
 });

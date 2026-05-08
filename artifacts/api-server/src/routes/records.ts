@@ -4,6 +4,7 @@ import { eq, and, gte, lte, desc, sql, inArray } from "drizzle-orm";
 import { ListRecordsQueryParams } from "@workspace/api-zod";
 import { detectPhilippineOperator } from "../lib/ph-operators";
 import { fetchLaafficReports } from "../lib/laaffic-reports";
+import { chargeDeliveredRecords, refreshTaskCounters } from "../lib/delivery-charging";
 
 const router = Router();
 
@@ -39,6 +40,13 @@ async function refreshLaafficReportsForRecords(records: Array<{
       failReason: report.failReason,
     }).where(eq(messageRecordsTable.id, candidate.record.id));
   }
+
+  await chargeDeliveredRecords(
+    candidates
+      .filter((candidate) => reports.get(candidate.record.messageId)?.sendResult === "delivered")
+      .map((candidate) => candidate.record.id),
+  );
+  await refreshTaskCounters(candidates.map((candidate) => candidate.record.taskId));
 }
 
 router.get("/records", async (req, res) => {
@@ -54,6 +62,8 @@ router.get("/records", async (req, res) => {
   const conditions = [];
   if (params.sendResult) {
     conditions.push(eq(messageRecordsTable.sendResult, params.sendResult));
+  } else {
+    conditions.push(sql`${messageRecordsTable.sendResult} in ('delivered', 'failed')`);
   }
   if (params.productId) {
     conditions.push(eq(messageRecordsTable.productId, params.productId));
@@ -140,7 +150,9 @@ router.get("/records/stats", async (_req, res) => {
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
   const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
-  const totalCost = allRecords.reduce((sum, r) => sum + Number(r.cost), 0);
+  const totalCost = allRecords
+    .filter(r => r.sendResult === "delivered")
+    .reduce((sum, r) => sum + Number(r.cost), 0);
   const latencies = allRecords.filter(r => r.deliveryLatency != null).map(r => r.deliveryLatency!);
   const avgLatencyMs = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
 

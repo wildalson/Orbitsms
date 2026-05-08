@@ -71,8 +71,9 @@ router.get("/billing/summary", async (_req, res) => {
   const bills = await db.select().from(billingRecordsTable);
   const allRecords = await db.select().from(messageRecordsTable);
 
-  const totalExpense = bills.reduce((sum, b) => sum + Number(b.amount), 0);
-  const totalMessages = bills.reduce((sum, b) => sum + b.messageCount, 0);
+  const smsBills = bills.filter((b) => b.type === "sms");
+  const totalExpense = smsBills.reduce((sum, b) => sum + Number(b.amount), 0);
+  const totalMessages = smsBills.reduce((sum, b) => sum + b.messageCount, 0);
   const totalSent = allRecords.length;
   const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
   const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;

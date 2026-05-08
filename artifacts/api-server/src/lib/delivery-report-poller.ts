@@ -1,31 +1,12 @@
 import { db, messageRecordsTable, productsTable, tasksTable, usersTable } from "@workspace/db";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { logger } from "./logger";
 import { fetchLaafficReports } from "./laaffic-reports";
+import { chargeDeliveredRecords, refreshTaskCounters } from "./delivery-charging";
 
 const POLL_INTERVAL_MS = 60_000;
 const LOOKBACK_DAYS = 7;
 let running = false;
-
-async function refreshTaskCounters(taskIds: number[]) {
-  const uniqueTaskIds = Array.from(new Set(taskIds));
-
-  for (const taskId of uniqueTaskIds) {
-    const [counts] = await db.select({
-      delivered: sql<number>`count(*) filter (where ${messageRecordsTable.sendResult} = 'delivered')`,
-      failed: sql<number>`count(*) filter (where ${messageRecordsTable.sendResult} = 'failed')`,
-      sent: sql<number>`count(*)`,
-    })
-      .from(messageRecordsTable)
-      .where(eq(messageRecordsTable.taskId, taskId));
-
-    await db.update(tasksTable).set({
-      deliveredCount: Number(counts?.delivered ?? 0),
-      failedCount: Number(counts?.failed ?? 0),
-      sentCount: Number(counts?.sent ?? 0),
-    }).where(eq(tasksTable.id, taskId));
-  }
-}
 
 export async function pollDeliveryReports() {
   if (running) return;
@@ -55,6 +36,7 @@ export async function pollDeliveryReports() {
     }
 
     const changedTaskIds: number[] = [];
+    const deliveredRecordIds: number[] = [];
 
     for (const group of groups.values()) {
       const first = group[0];
@@ -84,10 +66,14 @@ export async function pollDeliveryReports() {
           failReason: report.failReason,
         }).where(eq(messageRecordsTable.id, row.record.id));
         changedTaskIds.push(row.record.taskId);
+        if (report.sendResult === "delivered") {
+          deliveredRecordIds.push(row.record.id);
+        }
       }
     }
 
     if (changedTaskIds.length > 0) {
+      await chargeDeliveredRecords(deliveredRecordIds);
       await refreshTaskCounters(changedTaskIds);
       logger.info({ updated: changedTaskIds.length }, "Delivery reports refreshed");
     }
