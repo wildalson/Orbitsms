@@ -1,7 +1,7 @@
 import { db, messageRecordsTable, productsTable, tasksTable, usersTable } from "@workspace/db";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { logger } from "./logger";
-import { queryMessagesOverSmpp } from "./smpp-client";
+import { fetchLaafficReports } from "./laaffic-reports";
 
 const POLL_INTERVAL_MS = 60_000;
 const LOOKBACK_DAYS = 7;
@@ -35,12 +35,9 @@ export async function pollDeliveryReports() {
     const lookback = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
     const rows = await db.select({
       record: messageRecordsTable,
-      senderId: tasksTable.senderId,
-      smppHost: usersTable.smppHost,
-      smppPort: usersTable.smppPort,
-      smppSystemId: usersTable.smppSystemId,
-      smppPassword: usersTable.smppPassword,
       appId: usersTable.httpApiKey,
+      apiKey: usersTable.smppSystemId,
+      apiSecret: usersTable.smppPassword,
     })
       .from(messageRecordsTable)
       .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
@@ -53,7 +50,7 @@ export async function pollDeliveryReports() {
 
     const groups = new Map<string, typeof rows>();
     for (const row of rows) {
-      const key = `${row.smppHost ?? ""}:${row.smppPort ?? ""}:${row.smppSystemId ?? ""}:${row.smppPassword ?? ""}:${row.appId ?? ""}`;
+      const key = `${row.appId ?? ""}:${row.apiKey ?? ""}:${row.apiSecret ?? ""}`;
       groups.set(key, [...(groups.get(key) ?? []), row]);
     }
 
@@ -61,22 +58,17 @@ export async function pollDeliveryReports() {
 
     for (const group of groups.values()) {
       const first = group[0];
-      if (!first?.smppHost || !first.smppPort || !first.smppSystemId || !first.smppPassword) {
+      if (!first?.appId || !first.apiKey || !first.apiSecret) {
         continue;
       }
 
-      const reports = await queryMessagesOverSmpp(
+      const reports = await fetchLaafficReports(
         {
-          host: first.smppHost,
-          port: Number(first.smppPort),
-          systemId: first.smppSystemId,
-          password: first.smppPassword,
           appId: first.appId,
+          apiKey: first.apiKey,
+          apiSecret: first.apiSecret,
         },
-        group.map((r) => ({
-          messageId: r.record.messageId,
-          senderId: r.senderId ?? "",
-        })),
+        group.map((r) => r.record.messageId),
       );
 
       const updates = group

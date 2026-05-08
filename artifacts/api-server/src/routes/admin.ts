@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, usersTable, messageRecordsTable, tasksTable, productsTable, billingRecordsTable, channelsTable } from "@workspace/db";
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { detectPhilippineOperator } from "../lib/ph-operators";
-import { queryMessagesOverSmpp } from "../lib/smpp-client";
+import { fetchLaafficReports } from "../lib/laaffic-reports";
 import crypto from "crypto";
 
 const router = Router();
@@ -341,11 +341,9 @@ router.get("/admin/records", async (req, res) => {
     clientId: usersTable.id,
     clientName: usersTable.username,
     clientCompany: usersTable.companyName,
-    smppHost: usersTable.smppHost,
-    smppPort: usersTable.smppPort,
-    smppSystemId: usersTable.smppSystemId,
-    smppPassword: usersTable.smppPassword,
     appId: usersTable.httpApiKey,
+    apiKey: usersTable.smppSystemId,
+    apiSecret: usersTable.smppPassword,
   })
     .from(messageRecordsTable)
     .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
@@ -361,27 +359,22 @@ router.get("/admin/records", async (req, res) => {
   );
   const groups = new Map<string, typeof reportCandidates>();
   for (const row of reportCandidates) {
-    const key = `${row.smppHost ?? ""}:${row.smppPort ?? ""}:${row.smppSystemId ?? ""}:${row.smppPassword ?? ""}:${row.appId ?? ""}`;
+    const key = `${row.appId ?? ""}:${row.apiKey ?? ""}:${row.apiSecret ?? ""}`;
     groups.set(key, [...(groups.get(key) ?? []), row]);
   }
   for (const group of groups.values()) {
     const first = group[0];
-    if (!first?.smppHost || !first.smppPort || !first.smppSystemId || !first.smppPassword) {
+    if (!first?.appId || !first.apiKey || !first.apiSecret) {
       continue;
     }
 
-    const reports = await queryMessagesOverSmpp(
+    const reports = await fetchLaafficReports(
       {
-        host: first.smppHost,
-        port: Number(first.smppPort),
-        systemId: first.smppSystemId,
-        password: first.smppPassword,
         appId: first.appId,
+        apiKey: first.apiKey,
+        apiSecret: first.apiSecret,
       },
-      group.map((r) => ({
-        messageId: r.record.messageId,
-        senderId: r.senderId ?? "",
-      })),
+      group.map((r) => r.record.messageId),
     );
     for (const row of group) {
       const report = reports.get(row.record.messageId);

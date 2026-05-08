@@ -3,18 +3,15 @@ import { db, messageRecordsTable, tasksTable, productsTable, usersTable } from "
 import { eq, and, gte, lte, desc, sql, inArray } from "drizzle-orm";
 import { ListRecordsQueryParams } from "@workspace/api-zod";
 import { detectPhilippineOperator } from "../lib/ph-operators";
-import { queryMessagesOverSmpp } from "../lib/smpp-client";
+import { fetchLaafficReports } from "../lib/laaffic-reports";
 
 const router = Router();
 
 async function refreshLaafficReportsForRecords(records: Array<{
   record: typeof messageRecordsTable.$inferSelect;
-  senderId: string | null;
-  smppHost: string | null;
-  smppPort: string | null;
-  smppSystemId: string | null;
-  smppPassword: string | null;
   appId: string | null;
+  apiKey: string | null;
+  apiSecret: string | null;
 }>) {
   const candidates = records.filter((r) =>
     r.record.sendResult === "submitted",
@@ -22,20 +19,15 @@ async function refreshLaafficReportsForRecords(records: Array<{
   if (candidates.length === 0) return;
 
   const first = candidates[0];
-  if (!first?.smppHost || !first.smppPort || !first.smppSystemId || !first.smppPassword) return;
+  if (!first?.appId || !first.apiKey || !first.apiSecret) return;
 
-  const reports = await queryMessagesOverSmpp(
+  const reports = await fetchLaafficReports(
     {
-      host: first.smppHost,
-      port: Number(first.smppPort),
-      systemId: first.smppSystemId,
-      password: first.smppPassword,
       appId: first.appId,
+      apiKey: first.apiKey,
+      apiSecret: first.apiSecret,
     },
-    candidates.map((r) => ({
-      messageId: r.record.messageId,
-      senderId: r.senderId ?? "",
-    })),
+    candidates.map((r) => r.record.messageId),
   );
 
   for (const candidate of candidates) {
@@ -84,11 +76,9 @@ router.get("/records", async (req, res) => {
     messageContent: tasksTable.messageContent,
     senderId: tasksTable.senderId,
     productName: productsTable.name,
-    smppHost: usersTable.smppHost,
-    smppPort: usersTable.smppPort,
-    smppSystemId: usersTable.smppSystemId,
-    smppPassword: usersTable.smppPassword,
     appId: usersTable.httpApiKey,
+    apiKey: usersTable.smppSystemId,
+    apiSecret: usersTable.smppPassword,
   })
     .from(messageRecordsTable)
     .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))

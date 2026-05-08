@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, tasksTable, productsTable, messageRecordsTable, billingRecordsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { CreateTaskBody, ListTasksQueryParams } from "@workspace/api-zod";
-import { sendMessagesOverSmpp } from "../lib/smpp-client";
+import { sendMessagesOverLaafficHttp } from "../lib/laaffic-reports";
 import crypto from "crypto";
 
 const router = Router();
@@ -109,25 +109,21 @@ router.post("/tasks", async (req, res) => {
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
   }).returning();
 
-  const hasSmppCredentials = !!(
-    owner?.smppHost &&
-    owner.smppPort &&
+  const hasHttpCredentials = !!(
+    owner?.httpApiKey &&
     owner.smppSystemId &&
     owner.smppPassword
   );
-  const smppResults = hasSmppCredentials
-    ? await sendMessagesOverSmpp(
+  const providerResults = hasHttpCredentials
+    ? await sendMessagesOverLaafficHttp(
         {
-          host: owner.smppHost!,
-          port: Number(owner.smppPort),
-          systemId: owner.smppSystemId!,
-          password: owner.smppPassword!,
-          appId: owner.httpApiKey,
+          appId: owner.httpApiKey!,
+          apiKey: owner.smppSystemId!,
+          apiSecret: owner.smppPassword!,
         },
         recipients.map((recipient) => ({
           recipient,
           content: messageContent,
-          senderId: parsed.data.senderId?.trim() ?? "",
         })),
       )
     : null;
@@ -139,9 +135,9 @@ router.post("/tasks", async (req, res) => {
   for (let start = 0; start < recipients.length; start += RECORD_INSERT_CHUNK_SIZE) {
     const chunk = recipients.slice(start, start + RECORD_INSERT_CHUNK_SIZE);
     const recordValues = chunk.map((recipient, index) => {
-      const smppResult = smppResults?.[start + index];
+      const providerResult = providerResults?.[start + index];
       const sendResult =
-        smppResult?.status ??
+        providerResult?.status ??
         simulatedResults[Math.floor(Math.random() * simulatedResults.length)];
       const isDelivered = sendResult === "delivered";
       if (isDelivered) deliveredCount += 1;
@@ -152,11 +148,11 @@ router.post("/tasks", async (req, res) => {
         productId,
         recipient,
         sendResult,
-        failReason: sendResult === "failed" ? (smppResult?.error ?? "Network error") : null,
+        failReason: sendResult === "failed" ? (providerResult?.error ?? "Network error") : null,
         deliveredAt: isDelivered ? new Date() : null,
         deliveryLatency: isDelivered ? Math.floor(Math.random() * 20) + 2 : null,
         cost: String(costPerSms),
-        messageId: smppResult?.messageId ?? crypto.randomBytes(8).toString("hex"),
+        messageId: providerResult?.messageId ?? crypto.randomBytes(8).toString("hex"),
       };
     });
 
