@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const loginAuditTable = pgTable("login_audit", {
@@ -11,4 +11,7 @@ export const loginAuditTable = pgTable("login_audit", {
   userAgent: text("user_agent"),
   reason: text("reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("idx_login_audit_user_id").on(t.userId),
+  index("idx_login_audit_created_at").on(t.createdAt),
+]);

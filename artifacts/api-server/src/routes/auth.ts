@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, loginAuditTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, loginAuditTable, otpCodesTable, usersTable } from "@workspace/db";
+import { and, eq, gt } from "drizzle-orm";
 import { LoginBody, RegisterBody } from "@workspace/api-zod";
 import {
   generateToken,
@@ -62,8 +62,7 @@ async function auditLogin(req: any, username: string, success: boolean, user: an
   });
 }
 
-// In-memory OTP store: key = `${userId}:${type}`, value = {otp, expires}
-const otpStore = new Map<string, { otp: string; expires: number }>();
+const OTP_TTL_MS = 10 * 60 * 1000;
 
 router.post("/auth/login", async (req, res) => {
   const parsed = LoginBody.safeParse(req.body);
@@ -94,7 +93,7 @@ router.post("/auth/login", async (req, res) => {
     await db.update(usersTable).set({ password: await hashPassword(password) }).where(eq(usersTable.id, user.id));
   }
   await auditLogin(req, username, true, user);
-  const token = generateToken(user.id);
+  const token = await generateToken(user.id);
   res.json({ token, user: formatUser(user) });
 });
 
@@ -123,7 +122,7 @@ router.post("/auth/register", async (req, res) => {
     status: "active",
     balance: "1000",
   }).returning();
-  const token = generateToken(user.id);
+  const token = await generateToken(user.id);
   res.status(201).json({ token, user: formatUser(user) });
 });
 
@@ -196,7 +195,6 @@ router.post("/profile/send-otp", async (req, res) => {
     res.status(400).json({ error: "type must be 'email' or 'phone'" });
     return;
   }
-
   if (type === "email" && !user.email) {
     res.status(400).json({ error: "No email on file" });
     return;
@@ -206,15 +204,17 @@ router.post("/profile/send-otp", async (req, res) => {
     return;
   }
 
-  const otp = String(Math.floor(100000 + Math.random() * 900000));
-  const key = `${user.id}:${type}`;
-  otpStore.set(key, { otp, expires: Date.now() + 10 * 60 * 1000 });
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-  // In production: send via email/SMS service. For now return OTP in response.
+  await db.delete(otpCodesTable).where(
+    and(eq(otpCodesTable.userId, user.id), eq(otpCodesTable.type, type)),
+  );
+  await db.insert(otpCodesTable).values({ userId: user.id, type, code, expiresAt });
+
+  // TODO: send via email/SMS service
   const destination = type === "email" ? user.email : user.phone;
-  res.json({
-    message: `Verification code sent to ${destination}`,
-  });
+  res.json({ message: `Verification code sent to ${destination}` });
 });
 
 router.post("/profile/verify-otp", async (req, res) => {
@@ -227,29 +227,28 @@ router.post("/profile/verify-otp", async (req, res) => {
     return;
   }
 
-  const key = `${user.id}:${type}`;
-  const stored = otpStore.get(key);
+  const now = new Date();
+  const [stored] = await db.select().from(otpCodesTable).where(
+    and(
+      eq(otpCodesTable.userId, user.id),
+      eq(otpCodesTable.type, type),
+      gt(otpCodesTable.expiresAt, now),
+    ),
+  );
 
   if (!stored) {
-    res.status(400).json({ error: "No OTP found. Please request a new code." });
+    res.status(400).json({ error: "No valid OTP found. Please request a new code." });
     return;
   }
-  if (Date.now() > stored.expires) {
-    otpStore.delete(key);
-    res.status(400).json({ error: "OTP expired. Please request a new code." });
-    return;
-  }
-  if (stored.otp !== String(otp).trim()) {
+  if (stored.code !== String(otp).trim()) {
     res.status(400).json({ error: "Incorrect code. Please try again." });
     return;
   }
 
-  otpStore.delete(key);
-  const updates: Record<string, any> = type === "email"
-    ? { emailVerified: true }
-    : { phoneVerified: true };
+  await db.delete(otpCodesTable).where(eq(otpCodesTable.id, stored.id));
 
-  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, user.id)).returning();
+  const field = type === "email" ? { emailVerified: true } : { phoneVerified: true };
+  const [updated] = await db.update(usersTable).set(field).where(eq(usersTable.id, user.id)).returning();
   res.json(formatUser(updated));
 });
 

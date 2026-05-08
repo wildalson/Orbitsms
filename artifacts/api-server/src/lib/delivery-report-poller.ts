@@ -73,9 +73,13 @@ export async function pollDeliveryReports() {
     }
 
     if (changedTaskIds.length > 0) {
-      await chargeDeliveredRecords(deliveredRecordIds);
-      await refreshTaskCounters(changedTaskIds);
-      logger.info({ updated: changedTaskIds.length }, "Delivery reports refreshed");
+      try {
+        await chargeDeliveredRecords(deliveredRecordIds);
+        await refreshTaskCounters(changedTaskIds);
+        logger.info({ updated: changedTaskIds.length }, "Delivery reports refreshed");
+      } catch (err) {
+        logger.error({ err, recordIds: deliveredRecordIds }, "Failed to charge delivered records");
+      }
     }
   } catch (err) {
     logger.warn({ err }, "Delivery report polling failed");
@@ -84,12 +88,20 @@ export async function pollDeliveryReports() {
   }
 }
 
+let pollerInterval: ReturnType<typeof setInterval> | null = null;
+let pollerTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function startDeliveryReportPoller() {
-  setTimeout(() => {
+  pollerTimeout = setTimeout(() => {
     void pollDeliveryReports();
   }, 10_000);
 
-  setInterval(() => {
+  pollerInterval = setInterval(() => {
     void pollDeliveryReports();
   }, POLL_INTERVAL_MS);
+}
+
+export function stopDeliveryReportPoller() {
+  if (pollerTimeout) clearTimeout(pollerTimeout);
+  if (pollerInterval) clearInterval(pollerInterval);
 }

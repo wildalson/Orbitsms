@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, tasksTable, messageRecordsTable, productsTable } from "@workspace/db";
-import { eq, gte, sql } from "drizzle-orm";
+import { db, usersTable, messageRecordsTable, productsTable } from "@workspace/db";
+import { eq, gte, inArray, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -14,16 +14,21 @@ router.get("/dashboard/summary", async (req, res) => {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const userProducts = await db.select().from(productsTable).where(eq(productsTable.userId, userId));
-  const userProductIds = new Set(userProducts.map((p) => p.id));
-  const allRecords = (await db.select().from(messageRecordsTable))
-    .filter((record) => userProductIds.has(record.productId));
-  const todayRecords = allRecords.filter(r => r.createdAt >= todayStart);
-  const monthRecords = allRecords.filter(r => r.createdAt >= monthStart);
+  const userProductIds = userProducts.map((p) => p.id);
 
-  const todaySent = todayRecords.length;
-  const monthSent = monthRecords.length;
-  const todayDelivered = todayRecords.filter(r => r.sendResult === "delivered").length;
-  const todayFailed = todayRecords.filter(r => r.sendResult === "failed").length;
+  const [stats] = userProductIds.length > 0
+    ? await db.select({
+        todaySent: sql<number>`count(*) filter (where ${messageRecordsTable.createdAt} >= ${todayStart})`,
+        monthSent: sql<number>`count(*) filter (where ${messageRecordsTable.createdAt} >= ${monthStart})`,
+        todayDelivered: sql<number>`count(*) filter (where ${messageRecordsTable.createdAt} >= ${todayStart} and ${messageRecordsTable.sendResult} = 'delivered')`,
+        todayFailed: sql<number>`count(*) filter (where ${messageRecordsTable.createdAt} >= ${todayStart} and ${messageRecordsTable.sendResult} = 'failed')`,
+      }).from(messageRecordsTable).where(inArray(messageRecordsTable.productId, userProductIds))
+    : [{ todaySent: 0, monthSent: 0, todayDelivered: 0, todayFailed: 0 }];
+
+  const todaySent = Number(stats?.todaySent ?? 0);
+  const monthSent = Number(stats?.monthSent ?? 0);
+  const todayDelivered = Number(stats?.todayDelivered ?? 0);
+  const todayFailed = Number(stats?.todayFailed ?? 0);
   const successRate = todaySent > 0 ? Math.round((todayDelivered / todaySent) * 1000) / 10 : 0;
 
   const productBalances = userProducts.map(p => ({

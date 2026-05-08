@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { productsTable } from "./products";
@@ -17,7 +17,10 @@ export const tasksTable = pgTable("tasks", {
   cost: numeric("cost", { precision: 18, scale: 6 }).notNull().default("0"),
   scheduledAt: timestamp("scheduled_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("idx_tasks_product_id").on(t.productId),
+  index("idx_tasks_created_at").on(t.createdAt),
+]);
 
 export const insertTaskSchema = createInsertSchema(tasksTable).omit({ id: true, createdAt: true });
 export type InsertTask = z.infer<typeof insertTaskSchema>;

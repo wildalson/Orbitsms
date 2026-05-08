@@ -1,23 +1,20 @@
 import type { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const LEGACY_PASSWORD_SALT = "sms_gateway_salt";
-const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+const TOKEN_TTL = "12h";
 const BCRYPT_ROUNDS = 12;
 
 function tokenSecret() {
-  return process.env.AUTH_TOKEN_SECRET || process.env.SESSION_SECRET || "orbitsms-change-this-secret";
-}
-
-function base64url(input: Buffer | string) {
-  return Buffer.from(input).toString("base64url");
-}
-
-function sign(payload: string) {
-  return crypto.createHmac("sha256", tokenSecret()).update(payload).digest("base64url");
+  const secret = process.env.AUTH_TOKEN_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_TOKEN_SECRET environment variable is required");
+  }
+  return new TextEncoder().encode(secret);
 }
 
 export function legacyHashPassword(password: string) {
@@ -32,7 +29,6 @@ export async function verifyPassword(password: string, storedHash: string) {
   if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$") || storedHash.startsWith("$2y$")) {
     return bcrypt.compare(password, storedHash);
   }
-
   return storedHash === legacyHashPassword(password);
 }
 
@@ -40,15 +36,12 @@ export function isLegacyPasswordHash(storedHash: string) {
   return !storedHash.startsWith("$2a$") && !storedHash.startsWith("$2b$") && !storedHash.startsWith("$2y$");
 }
 
-export function generateToken(userId: number) {
-  const payload = JSON.stringify({
-    sub: userId,
-    iat: Date.now(),
-    exp: Date.now() + TOKEN_TTL_MS,
-    nonce: crypto.randomBytes(16).toString("hex"),
-  });
-  const encoded = base64url(payload);
-  return `${encoded}.${sign(encoded)}`;
+export async function generateToken(userId: number) {
+  return new SignJWT({ sub: String(userId) })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(TOKEN_TTL)
+    .sign(tokenSecret());
 }
 
 export async function getAuthUserFromRequest(req: Request) {
@@ -56,13 +49,11 @@ export async function getAuthUserFromRequest(req: Request) {
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.slice(7);
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature || sign(encoded) !== signature) return null;
-
   try {
-    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf-8"));
-    if (!payload?.sub || !payload?.exp || Date.now() > Number(payload.exp)) return null;
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, Number(payload.sub)));
+    const { payload } = await jwtVerify(token, tokenSecret()) as { payload: JWTPayload & { sub: string } };
+    const userId = Number(payload.sub);
+    if (!userId) return null;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     if (!user || user.status === "suspended") return null;
     return user;
   } catch {

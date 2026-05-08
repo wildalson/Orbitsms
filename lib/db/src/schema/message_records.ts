@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, numeric, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { tasksTable } from "./tasks";
@@ -22,7 +22,12 @@ export const messageRecordsTable = pgTable("message_records", {
   cost: numeric("cost", { precision: 18, scale: 6 }).notNull().default("0.250000"),
   messageId: text("message_id").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("idx_message_records_product_id").on(t.productId),
+  index("idx_message_records_task_id").on(t.taskId),
+  index("idx_message_records_send_result").on(t.sendResult),
+  index("idx_message_records_created_at").on(t.createdAt),
+]);
 
 export const insertMessageRecordSchema = createInsertSchema(messageRecordsTable).omit({ id: true, createdAt: true });
 export type InsertMessageRecord = z.infer<typeof insertMessageRecordSchema>;

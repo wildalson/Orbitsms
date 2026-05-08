@@ -30,13 +30,17 @@ router.get("/admin/stats", async (req, res) => {
   const activeClients = clients.filter(c => c.status === "active").length;
   const totalBalance = clients.reduce((s, c) => s + Number(c.balance), 0);
 
-  const allRecords = await db.select().from(messageRecordsTable);
-  const totalSent = allRecords.length;
-  const totalDelivered = allRecords.filter(r => r.sendResult === "delivered").length;
-  const totalFailed = allRecords.filter(r => r.sendResult === "failed").length;
-  const totalRevenue = allRecords
-    .filter((r) => r.sendResult === "delivered")
-    .reduce((s, r) => s + Number(r.cost), 0);
+  const [msgStats] = await db.select({
+    totalSent: sql<number>`count(*)`,
+    totalDelivered: sql<number>`count(*) filter (where ${messageRecordsTable.sendResult} = 'delivered')`,
+    totalFailed: sql<number>`count(*) filter (where ${messageRecordsTable.sendResult} = 'failed')`,
+    totalRevenue: sql<number>`coalesce(sum(${messageRecordsTable.cost}) filter (where ${messageRecordsTable.sendResult} = 'delivered'), 0)`,
+  }).from(messageRecordsTable);
+
+  const totalSent = Number(msgStats?.totalSent ?? 0);
+  const totalDelivered = Number(msgStats?.totalDelivered ?? 0);
+  const totalFailed = Number(msgStats?.totalFailed ?? 0);
+  const totalRevenue = Number(msgStats?.totalRevenue ?? 0);
 
   res.json({
     totalClients,

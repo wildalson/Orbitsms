@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, channelsTable, productsTable } from "@workspace/db";
+import { db, channelsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { CreateChannelBody } from "@workspace/api-zod";
 
