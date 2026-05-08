@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, usersTable, messageRecordsTable, tasksTable, productsTable, billingRecordsTable, channelsTable } from "@workspace/db";
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { detectPhilippineOperator } from "../lib/ph-operators";
-import { fetchLaafficReports } from "../lib/laaffic-reports";
+import { queryMessagesOverSmpp } from "../lib/smpp-client";
 import crypto from "crypto";
 
 const router = Router();
@@ -341,9 +341,11 @@ router.get("/admin/records", async (req, res) => {
     clientId: usersTable.id,
     clientName: usersTable.username,
     clientCompany: usersTable.companyName,
+    smppHost: usersTable.smppHost,
+    smppPort: usersTable.smppPort,
+    smppSystemId: usersTable.smppSystemId,
+    smppPassword: usersTable.smppPassword,
     appId: usersTable.httpApiKey,
-    apiKey: usersTable.smppSystemId,
-    apiSecret: usersTable.smppPassword,
   })
     .from(messageRecordsTable)
     .leftJoin(tasksTable, eq(messageRecordsTable.taskId, tasksTable.id))
@@ -359,17 +361,27 @@ router.get("/admin/records", async (req, res) => {
   );
   const groups = new Map<string, typeof reportCandidates>();
   for (const row of reportCandidates) {
-    const key = `${row.appId ?? ""}:${row.apiKey ?? ""}:${row.apiSecret ?? ""}`;
+    const key = `${row.smppHost ?? ""}:${row.smppPort ?? ""}:${row.smppSystemId ?? ""}:${row.smppPassword ?? ""}:${row.appId ?? ""}`;
     groups.set(key, [...(groups.get(key) ?? []), row]);
   }
   for (const group of groups.values()) {
-    const reports = await fetchLaafficReports(
+    const first = group[0];
+    if (!first?.smppHost || !first.smppPort || !first.smppSystemId || !first.smppPassword) {
+      continue;
+    }
+
+    const reports = await queryMessagesOverSmpp(
       {
-        appId: group[0]?.appId ?? null,
-        apiKey: group[0]?.apiKey ?? null,
-        apiSecret: group[0]?.apiSecret ?? null,
+        host: first.smppHost,
+        port: Number(first.smppPort),
+        systemId: first.smppSystemId,
+        password: first.smppPassword,
+        appId: first.appId,
       },
-      group.map((r) => r.record.messageId),
+      group.map((r) => ({
+        messageId: r.record.messageId,
+        senderId: r.senderId ?? "",
+      })),
     );
     for (const row of group) {
       const report = reports.get(row.record.messageId);

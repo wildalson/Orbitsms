@@ -17,11 +17,24 @@ type SubmitMessageInput = {
   senderId: string;
 };
 
+type QueryMessageInput = {
+  messageId: string;
+  senderId: string;
+};
+
 type SubmitMessageResult = {
   recipient: string;
   status: "submitted" | "failed";
   messageId: string;
   error?: string;
+};
+
+export type QueryMessageResult = {
+  messageId: string;
+  sendResult: "submitted" | "delivered" | "failed";
+  deliveredAt: Date | null;
+  failReason: string | null;
+  messageState: number | null;
 };
 
 const SMPP_TIMEOUT_MS = 15_000;
@@ -128,6 +141,74 @@ function submitSm(
   );
 }
 
+function mapMessageState(messageState: number | undefined): QueryMessageResult["sendResult"] | null {
+  switch (messageState) {
+    case smpp.MESSAGE_STATE?.DELIVERED:
+    case 2:
+      return "delivered";
+    case smpp.MESSAGE_STATE?.EXPIRED:
+    case smpp.MESSAGE_STATE?.DELETED:
+    case smpp.MESSAGE_STATE?.UNDELIVERABLE:
+    case smpp.MESSAGE_STATE?.REJECTED:
+    case 3:
+    case 4:
+    case 5:
+    case 8:
+      return "failed";
+    case smpp.MESSAGE_STATE?.ENROUTE:
+    case smpp.MESSAGE_STATE?.ACCEPTED:
+    case 1:
+    case 6:
+      return "submitted";
+    default:
+      return null;
+  }
+}
+
+function querySm(
+  session: any,
+  input: QueryMessageInput,
+): Promise<QueryMessageResult | null> {
+  return runWithTimeout(
+    new Promise((resolve) => {
+      session.query_sm(
+        {
+          message_id: input.messageId,
+          source_addr_ton: input.senderId ? 5 : 0,
+          source_addr_npi: input.senderId ? 0 : 0,
+          source_addr: input.senderId,
+        },
+        (pdu: any) => {
+          if (pdu.command_status !== 0) {
+            resolve(null);
+            return;
+          }
+
+          const sendResult = mapMessageState(pdu.message_state);
+          if (!sendResult) {
+            resolve(null);
+            return;
+          }
+
+          resolve({
+            messageId: pdu.message_id || input.messageId,
+            sendResult,
+            deliveredAt:
+              sendResult === "delivered" && pdu.final_date
+                ? new Date(pdu.final_date)
+                : sendResult === "delivered"
+                  ? new Date()
+                  : null,
+            failReason: sendResult === "failed" ? `SMPP message state ${pdu.message_state}` : null,
+            messageState: typeof pdu.message_state === "number" ? pdu.message_state : null,
+          });
+        },
+      );
+    }),
+    "Timed out querying SMPP message",
+  );
+}
+
 export async function sendMessagesOverSmpp(
   credentials: SmppCredentials,
   messages: SubmitMessageInput[],
@@ -152,6 +233,33 @@ export async function sendMessagesOverSmpp(
     }
 
     return results;
+  } finally {
+    session.close();
+  }
+}
+
+export async function queryMessagesOverSmpp(
+  credentials: SmppCredentials,
+  messages: QueryMessageInput[],
+): Promise<Map<string, QueryMessageResult>> {
+  const session = await connect(credentials);
+
+  try {
+    await bindTransceiver(session, credentials);
+    const reports = new Map<string, QueryMessageResult>();
+
+    for (const message of messages) {
+      try {
+        const report = await querySm(session, message);
+        if (report) {
+          reports.set(message.messageId, report);
+        }
+      } catch {
+        // Keep the local status unchanged when a provider query times out.
+      }
+    }
+
+    return reports;
   } finally {
     session.close();
   }
